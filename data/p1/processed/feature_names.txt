@@ -1,0 +1,14 @@
+CellSize
+CellShape
+NucleusDensity
+ChromatinTexture
+CytoplasmSize
+CellAdhesion
+MitosisRate
+NuclearMembrane
+GrowthFactor
+OxygenSaturation
+Vascularization
+InflammationMarkers
+CellType
+GeneticMutation
