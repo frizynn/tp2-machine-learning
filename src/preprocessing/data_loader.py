@@ -53,11 +53,11 @@ class DataLoader:
         self.mean = None
         self.std = None
 
-    def load_data(self, train_file: Optional[str] = None, valid_file: Optional[str] = None,
+    def read_data(self, train_file: Optional[str] = None, valid_file: Optional[str] = None,
                   test_file: Optional[str] = None, dev_file: Optional[str] = None,
                   splitted: bool = True) -> 'DataLoader':
         """
-        Load data from CSV files.
+        Load data from CSV files. 
         
         Parameters
         ----------

@@ -14,6 +14,20 @@ from utils.visuals import (
     plot_comparative_curves
 )
 
+
+from preprocessing.imputation import KNNImputer
+
+def train_valid_split(df, test_size=0.2, random_state=42):
+    """
+    Divide un DataFrame en conjuntos de entrenamiento y validación.
+    """
+    np.random.seed(random_state)
+    shuffled_indices = np.random.permutation(len(df))
+    test_set_size = int(len(df) * test_size)
+    valid_indices = shuffled_indices[:test_set_size]
+    train_indices = shuffled_indices[test_set_size:]
+    return df.iloc[train_indices], df.iloc[valid_indices]
+
 ##################################################
 # Helper Functions: Cálculo de curvas y AUC
 ##################################################
@@ -341,3 +355,251 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
         plot_comparative_curves(models_for_plotting, output_dir, prefix=f"{prefix}_", show_plot=show_plot, subplots=subplots)
     
     return metrics_df, evaluation_metrics
+
+
+
+def analyze_null_values(dataframes, dataset_names=None):
+    """
+    Analiza y muestra información detallada sobre valores nulos en uno o más DataFrames.
+    """
+    from IPython.display import display
+    if not isinstance(dataframes, list):
+        dataframes = [dataframes]
+    if dataset_names is None or len(dataset_names) != len(dataframes):
+        dataset_names = [f"Dataset {i+1}" for i in range(len(dataframes))]
+    results = {}
+    for df, name in zip(dataframes, dataset_names):
+        print(f"Valores nulos en {name}:")
+        null_counts = df.isnull().sum()
+        total_rows = len(df)
+        null_percentage = (null_counts / total_rows) * 100
+        null_table = pd.DataFrame({
+            'Columna': null_counts.index,
+            'Cantidad de nulos': null_counts.values,
+            'Porcentaje (%)': null_percentage.values.round(2)
+        })
+        display(null_table)
+        samples_with_nulls = df.isnull().any(axis=1).sum()
+        samples_without_nulls = total_rows - samples_with_nulls
+        samples_percentage = (samples_with_nulls / total_rows) * 100
+        summary = pd.DataFrame({
+            'Métrica': ['Muestras con al menos un valor nulo', 'Muestras sin valores nulos', 'Total de muestras'],
+            'Cantidad': [samples_with_nulls, samples_without_nulls, total_rows],
+            'Porcentaje (%)': [samples_percentage.round(2), (100 - samples_percentage).round(2), 100.0]
+        })
+        display(summary)
+        results[name] = {
+            'null_table': null_table,
+            'summary': summary,
+            'total_nulls': null_counts.sum(),
+            'total_rows': total_rows,
+            'null_percentage': (null_counts.sum() / (total_rows * len(df.columns)) * 100).round(2)
+        }
+        print("\n")
+    return results
+def remove_negative_values(df, numerical_cols):
+    """
+    Reemplaza todos los valores negativos en las columnas numéricas del DataFrame por NaN.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame a procesar.
+    
+    Returns
+    -------
+    pd.DataFrame, int
+        DataFrame procesado y el número total de valores negativos reemplazados.
+    """
+    df_copy = df.copy()
+    # Seleccionar solo las columnas numéricas
+    total_negatives = 0
+    for col in numerical_cols:
+        mask = (df_copy[col] < 0) & df_copy[col].notna()
+        negatives = mask.sum()
+        total_negatives += negatives
+        df_copy.loc[mask, col] = np.nan
+    return df_copy, total_negatives
+
+def impute_missing_values(train_df, valid_df=None, test_df=None, knn_neighbors=8, knn_weights="distance"):
+    """
+    Imputa valores faltantes utilizando un KNNImputer personalizado en uno o varios DataFrames.
+    
+    Parameters
+    ----------
+    train_df : pd.DataFrame
+        DataFrame de entrenamiento.
+    valid_df : pd.DataFrame, optional
+        DataFrame de validación.
+    test_df : pd.DataFrame, optional
+        DataFrame de test.
+    knn_neighbors : int, default=8
+        Número de vecinos a usar.
+    knn_weights : str, default="distance"
+        'uniform' o 'distance'.
+    
+    Returns
+    -------
+    Tuple[pd.DataFrame,...]
+        Los DataFrames imputados; si solo se pasa train_df, se retorna ese DataFrame.
+    """
+    # Resetear índices para evitar problemas
+    train_df = train_df.reset_index(drop=True)
+    if valid_df is not None:
+        valid_df = valid_df.reset_index(drop=True)
+    if test_df is not None:
+        test_df = test_df.reset_index(drop=True)
+    
+    print("Missing values before imputation:")
+    print(f"Train: {train_df.isna().sum().sum()} missing values")
+    if valid_df is not None:
+        print(f"Valid: {valid_df.isna().sum().sum()} missing values")
+    if test_df is not None:
+        print(f"Test: {test_df.isna().sum().sum()} missing values")
+    
+    imputer = KNNImputer(n_neighbors=knn_neighbors, weights=knn_weights, return_df=True)
+    imputer.fit(train_df)
+    
+    imputed_train = imputer.transform(train_df)
+    imputed_valid = imputer.transform(valid_df) if valid_df is not None else None
+    imputed_test = imputer.transform(test_df) if test_df is not None else None
+    
+    print("\nMissing values after imputation:")
+    print(f"Train: {imputed_train.isna().sum().sum()} missing values")
+    if imputed_valid is not None:
+        print(f"Valid: {imputed_valid.isna().sum().sum()} missing values")
+    if imputed_test is not None:
+        print(f"Test: {imputed_test.isna().sum().sum()} missing values")
+    
+    results = [imputed_train]
+    if valid_df is not None:
+        results.append(imputed_valid)
+    if test_df is not None:
+        results.append(imputed_test)
+    return tuple(results) if len(results) > 1 else results[0]
+
+def apply_feature_engineering(df, transformations, inplace=False, verbose=False):
+    """
+    Aplica transformaciones de feature engineering a un DataFrame.
+    """
+    if not inplace:
+        df = df.copy()
+    for new_feature, transform_func in transformations.items():
+        if verbose:
+            print(f"Aplicando transformación para la feature: '{new_feature}'")
+        df[new_feature] = transform_func(df)
+    return df
+def save_processed_data(loader, data_dict, data_dir, dataset_name, processing_type="preprocessed"):
+    """
+    Guarda los datos procesados o preprocesados en archivos CSV.
+    
+    Args:
+        loader: Instancia del DataLoader
+        data_dict: Diccionario con los DataFrames a guardar
+        data_dir: Directorio base de datos
+        dataset_name: Nombre del conjunto de datos
+        processing_type: Tipo de procesamiento ("preprocessed" o "processed")
+    """
+    # Actualizar el loader con los nuevos datos
+    loader.update(**data_dict)
+    
+    # Construir las rutas de los archivos
+    base_path = data_dir / processing_type
+    
+    # Crear directorio si no existe
+    base_path.mkdir(parents=True, exist_ok=True)
+    
+    # Construir rutas completas
+    file_paths = {
+        'train': base_path / f"{dataset_name}_train.csv",
+        'valid': base_path / f"{dataset_name}_valid.csv",
+        'test': base_path / f"{dataset_name}_test.csv",
+        'dev': base_path / f"{dataset_name}_dev.csv" if 'dev' in data_dict else None
+    }
+    
+    # Guardar los datos
+    loader.save_processed_data(
+        df_train_dir=file_paths['train'],
+        df_valid_dir=file_paths['valid'],
+        df_test_dir=file_paths['test'],
+        df_dev_dir=file_paths['dev'] if 'dev' in file_paths else None
+    )
+
+def calculate_class_weights(y):
+    """
+    Calculate class weights for cost-sensitive learning according to the formula C = π2/π1
+    where π1 is the prior probability of the minority class and π2 is the prior probability 
+    of the majority class.
+    
+    Parameters
+    ----------
+    y : np.ndarray
+        Target vector with class labels
+        
+    Returns
+    -------
+    Dict[int, float]
+        Dictionary mapping class labels to weights
+    """
+    classes, counts = np.unique(y, return_counts=True)
+    total = len(y)
+
+    # Calculate class probabilities
+    probs = counts / total
+
+    # Find majority class and its probability
+    majority_idx = np.argmax(counts)
+    majority_class = classes[majority_idx]
+    majority_prob = probs[majority_idx]
+
+    # Initialize weights with 1.0 for all classes
+    weights = {cls: 1.0 for cls in classes}
+
+    # Apply weight C = π2/π1 only to minority classes
+    for i, cls in enumerate(classes):
+        if cls != majority_class:  # If it's a minority class
+            weights[cls] = majority_prob / probs[i]
+            
+    # Log the weights for debugging
+    print(f"Class weights: {weights}")
+    print(f"Class probabilities: {dict(zip(classes, probs))}")
+    
+    return weights
+
+def normalize_data(X,params,return_params=False):
+    if params is None:
+        params = {}
+        params["mean"] = X.mean()
+        params["std"] = X.std()
+    X_normalized = (X - params["mean"]) / params["std"]
+    if return_params:
+        return X_normalized, params
+    return X_normalized
+
+
+def format_metrics_table(metrics_df, title="Metrics Summary"):
+    """
+    Formatea una tabla de métricas para mostrar, extrayendo valores AUC de diccionarios cuando sea necesario.
+    
+    Args:
+        metrics_df (pd.DataFrame): DataFrame con las métricas a formatear
+        title (str): Título a mostrar antes de la tabla
+        
+    Returns:
+        pd.DataFrame: DataFrame formateado para visualización
+    """
+    # Crear una copia para no modificar el original
+    display_df = metrics_df.copy()
+    
+    # Formatear columnas AUC si contienen diccionarios
+    for col in ['AUC-ROC', 'AUC-PR']:
+        if col in display_df.columns:
+            display_df[col] = display_df[col].apply(
+                lambda x: f"{x['auc']:.4f}" if isinstance(x, dict) and 'auc' in x 
+                else (f"{x['average_precision']:.4f}" if isinstance(x, dict) and 'average_precision' in x 
+                else str(x))
+            )
+    
+    print(f"\n===== {title} =====")
+    display(display_df)
+    return display_df
