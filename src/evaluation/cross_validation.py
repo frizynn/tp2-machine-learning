@@ -44,7 +44,7 @@ def cross_validate_lambda(
         Random state for reproducibility
     threshold : float, default=0.5
         Classification threshold for binary predictions
-    aggregate_predictions : bool, default=False
+    aggregate_predictions : bool, default=True
         If True, aggregates all predictions across folds before computing the metric;
         otherwise, computes per-fold metrics and then averages them.
     resampler : Optional[object], default=None
@@ -67,9 +67,12 @@ def cross_validate_lambda(
     mean_scores = []
     
     for lambda_val in lambda_values:
+        # Si aggregate_predictions es True, recolectamos todas las predicciones
+        # y calculamos la métrica solo una vez al final de todos los folds
         if aggregate_predictions:
             all_y_true, all_y_pred = [], []
         else:
+            # Si aggregate_predictions es False, calculamos métricas por cada fold
             fold_scores = []
         
         for fold in folds:
@@ -95,12 +98,21 @@ def cross_validate_lambda(
             y_pred = model.predict(X_val, threshold=threshold)
             
             if aggregate_predictions:
+                # Si aggregate_predictions es True, acumulamos resultados sin calcular métricas por fold
                 all_y_true.extend(y_val)
                 all_y_pred.extend(y_pred)
             else:
+                # Si aggregate_predictions es False, calculamos la métrica para este fold
                 fold_scores.append(metric_fn(y_val, y_pred, average=average))
         
-        score = metric_fn(np.array(all_y_true), np.array(all_y_pred), average=average) if aggregate_predictions else np.mean(fold_scores)
+        # Cálculo de la métrica final
+        if aggregate_predictions:
+            # Si aggregate_predictions es True, calculamos la métrica una sola vez con todos los datos
+            score = metric_fn(np.array(all_y_true), np.array(all_y_pred), average=average)
+        else:
+            # Si aggregate_predictions es False, promediamos las métricas de cada fold
+            score = np.mean(fold_scores)
+            
         mean_scores.append(score)
         
         if verbose:
@@ -126,6 +138,7 @@ def stratified_cross_validate_lambda(
     verbose: bool = False,
     threshold: float = 0.5,
     aggregate_predictions: bool = True,
+    average: str = "binary",
     resampler: Optional[object] = None  # Nuevo parámetro para re-muestreo
 ) -> Tuple[float, List[float]]:
     """
@@ -157,6 +170,8 @@ def stratified_cross_validate_lambda(
     aggregate_predictions : bool, default=True
         If True, aggregates all predictions across folds before computing the metric;
         otherwise, computes per-fold metrics and then averages them.
+    average : str, default="binary"
+        Type of averaging for multiclass metrics.
     resampler : Optional[object], default=None
         An object implementing fit_resample(X, y) for rebalancing.
         If None, no rebalancing is applied.
@@ -183,9 +198,12 @@ def stratified_cross_validate_lambda(
     mean_scores = []
     
     for lambda_val in lambda_values:
+        # Si aggregate_predictions es True, recolectamos todas las predicciones
+        # y calculamos la métrica solo una vez al final de todos los folds
         if aggregate_predictions:
             all_y_true, all_y_pred = [], []
         else:
+            # Si aggregate_predictions es False, calculamos métricas por cada fold
             fold_scores = []
         
         for fold in folds:
@@ -211,20 +229,26 @@ def stratified_cross_validate_lambda(
             y_pred = model.predict(X_val_fold, threshold=threshold)
             
             if aggregate_predictions:
+                # Si aggregate_predictions es True, acumulamos resultados sin calcular métricas por fold
                 all_y_true.extend(y_val_fold)
                 all_y_pred.extend(y_pred)
             else:
-                fold_scores.append(metric_fn(y_val_fold, y_pred))
+                # Si aggregate_predictions es False, calculamos la métrica para este fold
+                fold_scores.append(metric_fn(y_val_fold, y_pred, average=average))
         
-        score = metric_fn(np.array(all_y_true), np.array(all_y_pred)) if aggregate_predictions else np.mean(fold_scores)
+        # Cálculo de la métrica final
+        if aggregate_predictions:
+            # Si aggregate_predictions es True, calculamos la métrica una sola vez con todos los datos
+            score = metric_fn(np.array(all_y_true), np.array(all_y_pred), average=average)
+        else:
+            # Si aggregate_predictions es False, promediamos las métricas de cada fold
+            score = np.mean(fold_scores)
+            
         mean_scores.append(score)
         
         if verbose:
-            if aggregate_predictions:
-                print(f"Lambda: {lambda_val:.4f}, Aggregated {metric_fn.__name__}: {score:.4f}")
-            else:
-                std_fold = np.std(fold_scores)
-                print(f"Lambda: {lambda_val:.4f}, Mean {metric_fn.__name__}: {score:.4f} (std: {std_fold:.4f})")
+            mode = "Aggregated" if aggregate_predictions else "Mean"
+            print(f"Lambda: {lambda_val:.4f}, {mode} {metric_fn.__name__}: {score:.4f}")
     
     best_idx = np.argmax(mean_scores)
     best_lambda = lambda_values[best_idx]
