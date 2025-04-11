@@ -16,6 +16,7 @@ def cross_validate_lambda(
     random_state: int = 42,
     threshold: float = 0.5,
     aggregate_predictions: bool = True,
+    average: str = "binary",
     resampler: Optional[object] = None  # Nuevo parámetro para re-muestreo
 ) -> Tuple[float, List[float]]:
     """
@@ -97,9 +98,9 @@ def cross_validate_lambda(
                 all_y_true.extend(y_val)
                 all_y_pred.extend(y_pred)
             else:
-                fold_scores.append(metric_fn(y_val, y_pred))
+                fold_scores.append(metric_fn(y_val, y_pred, average=average))
         
-        score = metric_fn(np.array(all_y_true), np.array(all_y_pred)) if aggregate_predictions else np.mean(fold_scores)
+        score = metric_fn(np.array(all_y_true), np.array(all_y_pred), average=average) if aggregate_predictions else np.mean(fold_scores)
         mean_scores.append(score)
         
         if verbose:

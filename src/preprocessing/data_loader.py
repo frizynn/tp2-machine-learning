@@ -97,69 +97,6 @@ class DataLoader:
                 self.df_test = pd.read_csv(self.data_dir / test_file)
         return self
 
-    def train_test_split(self, return_splitted: bool = True, random_state: int = 42,
-                         return_numpy: bool = False, encode_categorical: bool = True,
-                         normalize: bool = False, is_test: bool = False
-                         ) -> Union[Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series],
-                                    Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray]]]:
-        """
-        Split the data into training and testing sets.
-        
-        Parameters
-        ----------
-        return_splitted : bool, default=True
-            If True, return X_train, X_test, y_train, y_test.
-            Otherwise, return X and y (full dataset).
-        random_state : int, default=42
-            Random seed for reproducibility.
-        return_numpy : bool, default=False
-            If True, return numpy arrays instead of pandas objects.
-        encode_categorical : bool, default=True
-            If True, encode categorical features.
-        normalize : bool, default=False
-            If True, normalize the data.
-        is_test : bool, default=False
-            If True, use stored mean and std (from training) for normalization.
-        
-        Returns
-        -------
-        Depending on return_splitted:
-            - If True: X_train, X_test, y_train, y_test.
-            - Otherwise: X, y.
-        """
-        if self.df_dev is None:
-            raise ValueError("Data not loaded yet. Call load_data() first.")
-
-        # Prepare features and target from the development set
-        X = self.df_dev.drop(columns=[self.target_column])
-        y = self.df_dev[self.target_column]
-
-        if encode_categorical:
-            X = DataLoader.encode_categorical(X)
-
-        self.feature_names = X.columns.tolist()
-
-        if not return_splitted:
-            X = self._normalize(X) if normalize and not (is_test and self.mean is not None and self.std is not None) \
-                else (self._normalize(X, self.mean, self.std) if normalize else X)
-            return (X.to_numpy(), y.to_numpy()) if return_numpy else (X, y)
-
-        X_train, X_test, y_train, y_test = self._train_test_split(
-            X, y,
-            test_size=self.config.split_config.test_size,
-            random_state=random_state,
-            shuffle=self.config.split_config.shuffle
-        )
-
-        if normalize:
-            X_train = self._normalize(X_train)
-            X_test = self._normalize(X_test, self.mean, self.std)
-
-        if return_numpy:
-            X_train, X_test = X_train.to_numpy(), X_test.to_numpy()
-            y_train, y_test = y_train.to_numpy(), y_test.to_numpy()
-
-        return X_train, X_test, y_train, y_test
 
     def _normalize(self, X: pd.DataFrame, mean: Optional[pd.Series] = None,
                    std: Optional[pd.Series] = None) -> pd.DataFrame:
@@ -207,19 +144,26 @@ class DataLoader:
             return X
         encoder = CategoricalEncoder(categorical_columns=categorical_columns, drop_first=True)
         return encoder.fit_transform(X)
+    
+    def process_data(train_df, valid_df, target_column="Diagnosis"):
+        # Resetear índices
+        train_df = train_df.reset_index(drop=True)
+        valid_df = valid_df.reset_index(drop=True)
+        
+        # Separar características y variable objetivo
+        X_train = train_df.drop(columns=[target_column])
+        y_train = train_df[target_column].to_numpy()
+        
+        X_val = valid_df.drop(columns=[target_column])
+        y_val = valid_df[target_column].to_numpy()
+        
+        # Codificar variables categóricas
+        X_train_encoded = DataLoader.encode_categorical(X_train).to_numpy()
+        X_val_encoded = DataLoader.encode_categorical(X_val).to_numpy()
+        
+        return X_train_encoded, y_train, X_val_encoded, y_val
 
-    def _train_test_split(self, X: pd.DataFrame, y: pd.Series, test_size: float,
-                          random_state: int, shuffle: bool
-                          ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
-        """
-        Split the data into training and testing sets using a reproducible permutation.
-        """
-        n_samples = len(X)
-        rng = np.random.RandomState(random_state)
-        indices = rng.permutation(n_samples) if shuffle else np.arange(n_samples)
-        n_test = int(n_samples * test_size)
-        test_indices, train_indices = indices[:n_test], indices[n_test:]
-        return X.iloc[train_indices], X.iloc[test_indices], y.iloc[train_indices], y.iloc[test_indices]
+
 
     def get_pandas_data(self, splitted: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         """
