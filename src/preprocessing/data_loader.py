@@ -182,17 +182,6 @@ class DataLoader:
             return self.df_train, self.df_valid, self.df_test
         return self.df_dev, self.df_test
 
-    def get_feature_names(self) -> List[str]:
-        """
-        Get the list of feature names.
-        
-        Returns
-        -------
-        List[str]
-            Feature names.
-        """
-        return self.feature_names
-
     def get_class_names(self) -> List[str]:
         """
         Get the list of class names.

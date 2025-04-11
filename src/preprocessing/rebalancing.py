@@ -156,7 +156,7 @@ class RandomOverSampler(BaseRebalancer):
 class SMOTEConfig(RebalancingConfig):
     """Configuration for SMOTE"""
     k_neighbors: int = 5
-    n_jobs: int = 1
+
 
 class SMOTE(BaseRebalancer):
     """

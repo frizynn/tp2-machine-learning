@@ -59,8 +59,3 @@ class CategoricalEncoder:
 
     def fit_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         return self.fit(X).transform(X)
-
-    def get_feature_names(self) -> List[str]:
-        if not self.is_fitted:
-            raise ValueError("Encoder no está ajustado. Llama a 'fit' antes de usar 'get_feature_names'.")
-        return self.encoded_columns

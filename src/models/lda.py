@@ -109,7 +109,7 @@ class LDA(BaseModel):
         if self.config.solver == 'svd':
             # SVD decomposition for numerical stability
             U, s, Vt = np.linalg.svd(self.covariance_)
-            eigvals = s
+
             pseudo_inv = Vt.T @ np.diag(1 / s) @ U.T
             scaled_means = self.means_ @ pseudo_inv
         else:  # 'eigen' solver

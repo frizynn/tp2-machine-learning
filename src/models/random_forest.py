@@ -95,7 +95,6 @@ class DecisionTree:
         self.n_features_: Optional[int] = None
         self.n_classes_: Optional[int] = None
         self.classes_: Optional[np.ndarray] = None
-        self.feature_importances_: Optional[np.ndarray] = None
         self.tree_: Optional[DecisionTreeNode] = None
         self.is_fitted: bool = False
     

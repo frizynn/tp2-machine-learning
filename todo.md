@@ -17,24 +17,14 @@
 
 ### TODO
 
-- entrenar los modelos finales del p1 con dev 
-
-
-- decir que en el reporte: that contrary to common recommendations, your LDA model performed significantly better (88% vs 53% accuracy) with non-normalized data for this basketball player performance prediction task.
-
-- LDA asume que sale de distrbucion normalizada
-
-- corregir KNN que no me esta funcionando para WAR 
 
 - buscar hiperparams para multiclass
 
 - buscar hiperparametros optimos para random forest
 
---> Despues de hacer todo el train (separado valid de train), entrenar todo el modelo con dev. VER SI AHI SI PUEDO HACER IQR Y KNN CON TODO DEV 
-
-
 - MEJORAR GRAFICOS INFORME (TAMAÑO DE LAS LETRAS Y LABELS)
 
+- Preguntar si esta bien que me de tan mal logistic regression
 
 ### FIXES
 

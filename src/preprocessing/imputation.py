@@ -135,10 +135,3 @@ class KNNImputer:
         Ajusta e imputa a la vez los datos.
         """
         return self.fit(X, verbose).transform(X, verbose)
-
-    def get_dataframe(self, X_array, original_df):
-        """
-        Convierte un array numpy en un DataFrame manteniendo índices y columnas del original.
-        """
-        return pd.DataFrame(X_array, index=original_df.index, columns=original_df.columns)
-        
