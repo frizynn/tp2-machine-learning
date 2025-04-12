@@ -232,14 +232,15 @@ def plot_confusion_matrix(conf_matrix: np.ndarray, class_names: Optional[List[st
         for j in range(conf_matrix.shape[1]):
             ax.text(j, i, format(conf_matrix[i, j], fmt),
                     ha="center", va="center",
-                    color="white" if conf_matrix[i, j] > thresh else "black")
+                    color="white" if conf_matrix[i, j] > thresh else "black",
+                    fontsize=14,  # Aumentado de 10 a 14
+                    fontweight='bold')  # Agregado para hacer los números más visibles
     
-    ax.set_ylabel('Etiqueta real', fontsize=12)
-    ax.set_xlabel('Etiqueta predicha', fontsize=12)
+    ax.set_ylabel('Etiqueta real', fontsize=18)
+    ax.set_xlabel('Etiqueta predicha', fontsize=18)
     if save_dir and filename:
         _save_plot(os.path.join(save_dir, filename), dpi)
     return ax.figure
-
 def plot_roc_curve(fpr: np.ndarray, tpr: np.ndarray, auc_score: Optional[float] = None,
                    figsize: tuple = (10, 8),
                    title: str = 'Curva ROC (Característica Operativa del Receptor)',
@@ -274,7 +275,7 @@ def plot_roc_curve(fpr: np.ndarray, tpr: np.ndarray, auc_score: Optional[float] 
 
 def plot_precision_recall_curve(precision: np.ndarray, recall: np.ndarray,
                                 average_precision: Optional[float] = None,
-                                figsize: tuple = (10, 8), title: str = 'Curva Precisión-Exhaustividad',
+                                figsize: tuple = (10, 8), title: str = 'Curva Precision-Recall',
                                 save_dir: Optional[str] = None, filename: Optional[str] = None,
                                 dpi: int = 300, label: Optional[str] = None, color: Optional[str] = None,
                                 linestyle: str = '-', multiple_curves: bool = False,
@@ -290,8 +291,8 @@ def plot_precision_recall_curve(precision: np.ndarray, recall: np.ndarray,
     ax.plot(recall, precision, color=color, linestyle=linestyle, label=curve_label)
     ax.set_xlim([0.0, 1.0])
     ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('Exhaustividad', fontsize=12)
-    ax.set_ylabel('Precisión', fontsize=12)
+    ax.set_xlabel('Recall', fontsize=12)
+    ax.set_ylabel('Precision', fontsize=12)
     if title:
         ax.set_title(title, fontsize=16)
     ax.grid(True, alpha=0.3)
@@ -317,10 +318,9 @@ def plot_lambda_tuning(lambda_values: List[float], scores: List[float],
         best_score = scores[best_idx]
         plt.axvline(x=best_lambda, color='red', linestyle='--', alpha=0.7)
         plt.plot(best_lambda, best_score, 'ro', markersize=10, label=f'Mejor λ = {best_lambda}')
-        plt.legend()
-    plt.xlabel('Lambda (λ)', fontsize=12)
-    plt.ylabel(metric_name, fontsize=12)
-    plt.title(f'Efecto de la Regularización L2 (λ) en {metric_name}', fontsize=14)
+        plt.legend(fontsize=8)
+    plt.xlabel('Lambda (λ)', fontsize=24)
+    plt.ylabel(metric_name, fontsize=24)
     plt.grid(True, alpha=0.3)
     if log_scale and min(lambda_values) > 0:
         plt.xscale('log')
@@ -396,7 +396,7 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
                                             color=colors[i % len(colors)],
                                             linestyle=linestyles[i % len(linestyles)],
                                             multiple_curves=True, ax=ax_pr)
-        ax_pr.set_title("Curvas Precisión-Exhaustividad para Diferentes Técnicas de Rebalanceo", fontsize=14)
+        ax_pr.set_title("Curvas Precision-Recall para Diferentes Técnicas de Rebalanceo", fontsize=14)
         ax_pr.legend(loc="lower left", fontsize=10)
         
         plt.tight_layout()
@@ -436,7 +436,7 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
                                             color=colors[i % len(colors)],
                                             linestyle=linestyles[i % len(linestyles)],
                                             multiple_curves=True, ax=ax_pr)
-        ax_pr.set_title("Curvas Precisión-Exhaustividad para Diferentes Técnicas de Rebalanceo", fontsize=14)
+        ax_pr.set_title("Curvas Precision-Recall para Diferentes Técnicas de Rebalanceo", fontsize=14)
         ax_pr.legend(loc="lower left", fontsize=10)
         plt.tight_layout()
         pr_path = os.path.join(output_dir, f"{prefix}pr_curves_comparison.png")
@@ -519,9 +519,9 @@ def plot_model_evaluation(metrics, class_names=None, figsize=(16, 5), save_dir=N
             
             # Graficar PR
             axes[2].plot(recall_vals, precision_vals, lw=2, label=f'PR (AUC = {pr_auc_val:.2f})')
-            axes[2].set_xlabel('Exhaustividad')
-            axes[2].set_ylabel('Precisión')
-            axes[2].set_title('Curva Precisión-Exhaustividad')
+            axes[2].set_xlabel('Recall')
+            axes[2].set_ylabel('Precision')
+            axes[2].set_title('Curva Precision-Recall')
             axes[2].legend(loc="lower left")
         else:
             # Extraer datos de curvas multiclase
@@ -549,9 +549,9 @@ def plot_model_evaluation(metrics, class_names=None, figsize=(16, 5), save_dir=N
             for i, cls in enumerate(classes):
                 axes[2].plot(rec_dict[i], prec_dict[i], lw=2, color=colors(i),
                              label=f'{class_names[i]} (AUC = {pr_auc_scores[i]:.2f})')
-            axes[2].set_xlabel('Exhaustividad')
-            axes[2].set_ylabel('Precisión')
-            axes[2].set_title('Curvas Precisión-Exhaustividad')
+            axes[2].set_xlabel('Recall')
+            axes[2].set_ylabel('Precision')
+            axes[2].set_title('Curvas Precision-Recall')
             axes[2].legend(loc="lower left", fontsize='small')
             
         plt.tight_layout()
@@ -586,7 +586,7 @@ def plot_and_save_binary_curves(y_test, y_pred_prob, pos_label, save_dir, base_f
         axes[0].plot([0,1], [0,1], 'k--', lw=2)
         axes[0].set_xlabel('TFP'); axes[0].set_ylabel('TVP'); axes[0].set_title('Curva ROC'); axes[0].legend(loc="lower right")
         axes[1].plot(recall_vals, precision_vals, lw=2, label=f'PR (AUC = {pr_auc_val:.2f})')
-        axes[1].set_xlabel('Exhaustividad'); axes[1].set_ylabel('Precisión'); axes[1].set_title('Curva PR'); axes[1].legend(loc="lower left")
+        axes[1].set_xlabel('Recall'); axes[1].set_ylabel('Precision'); axes[1].set_title('Curva PR'); axes[1].legend(loc="lower left")
         plt.tight_layout()
         save_or_show_plot(fig, save_dir, f"{base_filename}_curves", show_plots)
     else:
@@ -597,7 +597,7 @@ def plot_and_save_binary_curves(y_test, y_pred_prob, pos_label, save_dir, base_f
         save_or_show_plot(plt.gcf(), save_dir, f"{base_filename}_roc_curve", show_plots)
         plt.figure(figsize=figsize)
         plt.plot(recall_vals, precision_vals, lw=2, label=f'PR (AUC = {pr_auc_val:.2f})')
-        plt.xlabel('Exhaustividad'); plt.ylabel('Precisión'); plt.title('Curva PR'); plt.legend(loc="lower left")
+        plt.xlabel('Recall'); plt.ylabel('Precision'); plt.title('Curva PR'); plt.legend(loc="lower left")
         save_or_show_plot(plt.gcf(), save_dir, f"{base_filename}_pr_curve", show_plots)
 
 def plot_and_save_multiclass_curves(y_test, y_pred_prob, classes, class_names, save_dir, base_filename, show_plots, figsize, subplots=True):
@@ -621,7 +621,7 @@ def plot_and_save_multiclass_curves(y_test, y_pred_prob, classes, class_names, s
                      label=f'{class_names[i]} (AUC = {pr_auc_scores[i]:.2f})')
         ax1.plot([0,1], [0,1], 'k--', lw=1)
         ax1.set_xlabel('TFP'); ax1.set_ylabel('TVP'); ax1.set_title('Curvas ROC'); ax1.legend(loc="lower right", fontsize='small')
-        ax2.set_xlabel('Exhaustividad'); ax2.set_ylabel('Precisión'); ax2.set_title('Curvas PR'); ax2.legend(loc="lower left", fontsize='small')
+        ax2.set_xlabel('Recall'); ax2.set_ylabel('Precision'); ax2.set_title('Curvas PR'); ax2.legend(loc="lower left", fontsize='small')
         plt.tight_layout()
         save_or_show_plot(fig, save_dir, f"{base_filename}_multiclass_curves", show_plots)
     else:
@@ -637,7 +637,7 @@ def plot_and_save_multiclass_curves(y_test, y_pred_prob, classes, class_names, s
         for i in range(n_classes):
             plt.plot(rec_dict[i], prec_dict[i], lw=2, color=colors(i),
                      label=f'{class_names[i]} (AUC = {pr_auc_scores[i]:.2f})')
-        plt.xlabel('Exhaustividad'); plt.ylabel('Precisión'); plt.title('Curvas PR'); plt.legend(loc="lower left")
+        plt.xlabel('Recall'); plt.ylabel('Precision'); plt.title('Curvas PR'); plt.legend(loc="lower left")
         save_or_show_plot(plt.gcf(), save_dir, f"{base_filename}_multiclass_pr", show_plots)
     return avg_roc_auc, avg_pr_auc
 

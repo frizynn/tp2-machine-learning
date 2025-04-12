@@ -2,9 +2,6 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from cycler import cycler
 
-
-
-
 # Configuración general de matplotlib
 plt.style.use('seaborn-v0_8-whitegrid')
 
@@ -23,6 +20,10 @@ mpl.rcParams['axes.grid'] = True
 mpl.rcParams['grid.alpha'] = 0.3
 mpl.rcParams['grid.linestyle'] = '--'
 mpl.rcParams['grid.linewidth'] = 0.5
+mpl.rcParams['axes.facecolor'] = '#f0f0f0'  # Fondo gris claro
+mpl.rcParams['axes.grid.which'] = 'both'    # Mostrar grid mayor y menor
+mpl.rcParams['grid.color'] = '#ffffff'      # Color blanco para las líneas del grid
+mpl.rcParams['grid.alpha'] = 0.5            # Mayor opacidad para las líneas
 
 # Configuración de los ticks
 mpl.rcParams['xtick.major.size'] = 8
@@ -68,7 +69,7 @@ mpl.rcParams['axes.prop_cycle'] = cycler(color=[
 # Configuración de las figuras
 mpl.rcParams['figure.figsize'] = (10, 6)
 mpl.rcParams['figure.dpi'] = 100
-mpl.rcParams['figure.facecolor'] = 'white'
+mpl.rcParams['figure.facecolor'] = '#f0f0f0'  # Fondo gris claro para la figura
 mpl.rcParams['figure.edgecolor'] = 'white'
 mpl.rcParams['savefig.dpi'] = 300
 mpl.rcParams['savefig.bbox'] = 'tight'
