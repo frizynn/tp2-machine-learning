@@ -424,3 +424,41 @@ def average_precision_score(
             return np.average(ap_scores, weights=class_counts)
         else:
             raise ValueError(f"Unsupported average: {average}")
+
+
+def compute_binary_curves(y_true, y_score, pos_label):
+    """
+    Calcula curvas ROC y de Precisión-Recall para clasificación binaria.
+    
+    Retorna:
+      fpr, tpr, roc_auc, precision_vals, recall_vals, pr_auc
+    """
+    fpr, tpr, _ = roc_curve(y_true, y_score, pos_label=pos_label)
+    roc_auc_val = auc(fpr, tpr)
+    precision_vals, recall_vals, _ = precision_recall_curve(y_true, y_score, pos_label=pos_label)
+    pr_auc_val = auc(recall_vals, precision_vals)
+    return fpr, tpr, roc_auc_val, precision_vals, recall_vals, pr_auc_val
+
+
+
+def compute_multiclass_curves(y_true, y_pred_prob, classes):
+    """
+    Calcula curvas ROC y de Precisión-Recall para cada clase en modo one-vs-rest.
+    
+    Retorna diccionarios con:
+      - fpr, tpr, roc_auc_scores
+      - precision_dict, recall_dict, pr_auc_scores
+    """
+    n_classes = len(classes)
+    fpr, tpr = {}, {}
+    roc_auc_scores = np.empty(n_classes)
+    precision_dict, recall_dict = {}, {}
+    pr_auc_scores = np.empty(n_classes)
+    # Para cada clase, se binariza y se calcula la curva correspondiente.
+    for i, cls in enumerate(classes):
+        y_true_bin = (y_true == cls).astype(int)
+        fpr[i], tpr[i], _ = roc_curve(y_true_bin, y_pred_prob[:, i], pos_label=1)
+        roc_auc_scores[i] = auc(fpr[i], tpr[i])
+        precision_dict[i], recall_dict[i], _ = precision_recall_curve(y_true_bin, y_pred_prob[:, i], pos_label=1)
+        pr_auc_scores[i] = auc(recall_dict[i], precision_dict[i])
+    return fpr, tpr, roc_auc_scores, precision_dict, recall_dict, pr_auc_scores
