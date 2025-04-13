@@ -1,27 +1,27 @@
 import numpy as np
 import pandas as pd
 from typing import Callable, List, Tuple, Union, Optional
+from concurrent.futures import ProcessPoolExecutor
 
 from models.logistic_regression import LogisticRegression, LogisticRegressionConfig
 from preprocessing.outliers import replace_outliers_iqr
 from preprocessing.imputation import KNNImputer
 from preprocessing.categorical_encoder import CategoricalEncoder
 from utils.utils import calculate_class_weights, normalize_data
-import numpy as np
-import pandas as pd
-from concurrent.futures import ProcessPoolExecutor
-from typing import Tuple, List, Union, Callable, Optional
-
 
 
 def preprocess_data_local(df: pd.DataFrame, categorical_columns: Optional[List[str]] = None, 
                           iqr_params: Optional[Tuple[float, float]] = None, return_params: bool = False,
-                          normalize: bool = False, norm_params: Optional[dict] = None) -> Union[pd.DataFrame, Tuple[pd.DataFrame, Tuple[float, float], dict]]:
+                          normalize: bool = False, norm_params: Optional[dict] = None,
+                          imputer: Optional[KNNImputer] = None) -> Union[pd.DataFrame, Tuple[pd.DataFrame, Tuple[float, float], dict, KNNImputer]]:
     # Resetear índice y copiar para evitar modificaciones
     df_proc = df.reset_index(drop=True).copy()
-    # Imputación
-    imputer = KNNImputer(n_neighbors=5, weights="distance", return_df=True)
-    imputer.fit(df_proc)
+    
+    # Imputación - permitir pasar un imputer preajustado para evitar data leakage
+    if imputer is None:
+        imputer = KNNImputer(n_neighbors=5, weights="distance", return_df=True)
+        imputer.fit(df_proc)
+    
     df_proc = imputer.transform(df_proc)
 
     # Codificación categórica
@@ -29,6 +29,7 @@ def preprocess_data_local(df: pd.DataFrame, categorical_columns: Optional[List[s
         valid_cat = [col for col in categorical_columns if col in df_proc.columns]
         if valid_cat:
             df_proc = CategoricalEncoder.encode_categorical(df_proc, categorical_columns=valid_cat)
+    
     # Tratamiento de outliers
     if iqr_params:
         df_proc = replace_outliers_iqr(df_proc, method="winsorize", params=iqr_params)
@@ -45,8 +46,36 @@ def preprocess_data_local(df: pd.DataFrame, categorical_columns: Optional[List[s
             df_proc = normalize_data(df_proc, norm_params)
     
     if return_params:
-        return (df_proc, params, norm_params_result) if normalize else (df_proc, params)
+        return (df_proc, params, norm_params_result, imputer) if normalize else (df_proc, params, imputer)
     return df_proc
+
+
+def create_stratified_folds(X: pd.DataFrame, y: np.ndarray, k_folds: int, 
+                           random_state: int = 42) -> List[np.ndarray]:
+    """
+    Crear folds con muestreo estratificado para mantener la distribución de clases.
+    """
+    np.random.seed(random_state)
+    n_samples = X.shape[0]
+    indices = np.arange(n_samples)
+    
+    # Obtener clases únicas y sus índices
+    unique_classes = np.unique(y)
+    class_indices = [np.where(y == cls)[0] for cls in unique_classes]
+    
+    # Crear folds estratificados
+    folds = [[] for _ in range(k_folds)]
+    
+    # Para cada clase, distribuir sus índices uniformemente entre los folds
+    for cls_idx in class_indices:
+        np.random.shuffle(cls_idx)
+        fold_sizes = np.array_split(np.arange(len(cls_idx)), k_folds)
+        for i, fold_size in enumerate(fold_sizes):
+            folds[i].extend(cls_idx[fold_size])
+    
+    # Convertir listas a arrays de numpy
+    return [np.array(fold) for fold in folds]
+
 
 def process_fold(fold_indices: np.ndarray, folds: List[np.ndarray],
                  X: pd.DataFrame, y: np.ndarray, lambda_val: float,
@@ -67,12 +96,20 @@ def process_fold(fold_indices: np.ndarray, folds: List[np.ndarray],
     if preprocess_per_fold:
         if normalize:
             # Calcular parámetros de normalización sólo con datos de entrenamiento para evitar data leakage
-            X_train, iqr_params, norm_params = preprocess_data_local(X_train, categorical_columns, return_params=True, normalize=True)
+            X_train, iqr_params, norm_params, imputer = preprocess_data_local(
+                X_train, categorical_columns, return_params=True, normalize=True)
+            
             # Aplicar los mismos parámetros a los datos de validación
-            X_val = preprocess_data_local(X_val, categorical_columns, iqr_params=iqr_params, normalize=True, norm_params=norm_params)
+            X_val = preprocess_data_local(
+                X_val, categorical_columns, iqr_params=iqr_params, 
+                normalize=True, norm_params=norm_params, imputer=imputer)
         else:
-            X_train, iqr_params = preprocess_data_local(X_train, categorical_columns, return_params=True, normalize=False)
-            X_val = preprocess_data_local(X_val, categorical_columns, iqr_params=iqr_params, normalize=False)
+            X_train, iqr_params, imputer = preprocess_data_local(
+                X_train, categorical_columns, return_params=True, normalize=False)
+            
+            X_val = preprocess_data_local(
+                X_val, categorical_columns, iqr_params=iqr_params, 
+                normalize=False, imputer=imputer)
     else:
         # Si el preprocesamiento global ya se realizó, se selecciona la parte correspondiente
         X_train = global_preprocessed.iloc[train_indices].reset_index(drop=True)
@@ -103,6 +140,7 @@ def process_fold(fold_indices: np.ndarray, folds: List[np.ndarray],
     y_pred = model.predict(X_val_array, threshold=threshold)
     return y_val, y_pred
 
+
 def cross_validate_lambda(
     X: pd.DataFrame,
     y: Union[pd.Series, np.ndarray],
@@ -121,7 +159,8 @@ def cross_validate_lambda(
     resampler: Optional[object] = None,
     preprocess_per_fold: bool = True,
     apply_class_reweighting: bool = False,
-    categorical_columns: Optional[List[str]] = None
+    categorical_columns: Optional[List[str]] = None,
+    stratified: bool = False  
 ) -> Tuple[float, List[float]]:
     # Asegurar que X es DataFrame y convertir y a array
     if not isinstance(X, pd.DataFrame):
@@ -130,23 +169,24 @@ def cross_validate_lambda(
         y = y.to_numpy()
     
     np.random.seed(random_state)
-    n_samples = X.shape[0]
-    indices = np.arange(n_samples)
-    np.random.shuffle(indices)
-    folds = np.array_split(indices, k_folds)
+    
+    # Crear folds - estratificados o no según el parámetro
+    if stratified:
+        folds = create_stratified_folds(X, y, k_folds, random_state)
+    else:
+        n_samples = X.shape[0]
+        indices = np.arange(n_samples)
+        np.random.shuffle(indices)
+        folds = np.array_split(indices, k_folds)
     
     # Preprocesamiento global (si se decide no hacerlo por fold)
     global_preprocessed = None
     if not preprocess_per_fold:
-        # Si se pide normalización global, se debe hacer con cuidado para evitar data leakage en la evaluación
+        # ADVERTENCIA: Esto sigue siendo riesgoso para evitar data leakage
         if normalize:
-            # NOTA: Esto sigue siendo riesgoso para evaluar el modelo real, 
-            # ya que estamos normalizando con estadísticas de todo el dataset
-            # Idealmente, la normalización global debería hacerse fuera del CV
-            # en una pipeline de entrenamiento separada
-            global_preprocessed, _, _ = preprocess_data_local(X, categorical_columns, normalize=True, return_params=True)
+            global_preprocessed, _, _, _ = preprocess_data_local(X, categorical_columns, normalize=True, return_params=True)
         else:
-            global_preprocessed = preprocess_data_local(X, categorical_columns, return_params=False)
+            global_preprocessed, _, _ = preprocess_data_local(X, categorical_columns, return_params=True, normalize=False)
     
     mean_scores = []
 
@@ -188,20 +228,3 @@ def cross_validate_lambda(
     best_lambda = lambda_values[best_idx]
     
     return best_lambda, mean_scores
-
-# Ejemplo de uso:
-if __name__ == "__main__":
-    # Suponiendo que dispones de X, y y una función métrica (por ejemplo, accuracy_score implementada en puro Python o ya definida)
-    # Aquí se usarían instancias reales de los datos y los modelos
-    best_lambda, scores = cross_validate_lambda(
-        X=pd.DataFrame(np.random.rand(100, 10)),
-        y=np.random.randint(0, 2, 100),
-        lambda_values=[0.01, 0.1, 1.0],
-        metric_fn=lambda y_true, y_pred, average: np.mean(y_true == y_pred),
-        k_folds=5,
-        verbose=True,
-        normalize=True,  # Habilitamos la normalización
-        preprocess_per_fold=True,
-        categorical_columns=None
-    )
-    print("Best Lambda:", best_lambda)
