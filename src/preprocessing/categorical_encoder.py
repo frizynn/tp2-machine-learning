@@ -59,3 +59,26 @@ class CategoricalEncoder:
 
     def fit_transform(self, X: pd.DataFrame) -> pd.DataFrame:
         return self.fit(X).transform(X)
+    
+
+    @staticmethod
+    def encode_categorical(X: pd.DataFrame, categorical_columns: Optional[List[str]] = None, drop_first: bool = False) -> pd.DataFrame:
+        """
+        Encode categorical features using one-hot encoding.
+        
+        Parameters
+        ----------
+        X : pd.DataFrame
+            DataFrame with features to encode.
+            
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame with encoded categorical features.
+        """
+        if categorical_columns is None:
+            categorical_columns = X.select_dtypes(include=['object', 'category']).columns.tolist()
+        if not categorical_columns:
+            return X
+        encoder = CategoricalEncoder(categorical_columns=categorical_columns, drop_first=drop_first)
+        return encoder.fit_transform(X)

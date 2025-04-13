@@ -2,7 +2,6 @@
 #### Punto 1
 
 
-
 ### Respuestas
 --> esta bien hacer IQR para test con los cuantiles de train? --> SI
 
@@ -17,17 +16,21 @@
 
 ### TODO
 
-- buscar hiperparametros optimos para random forest
+
 
 - MEJORAR GRAFICOS INFORME (TAMAÑO DE LAS LETRAS Y LABELS)
 
-- Preguntar si esta bien que me de tan mal logistic regression
+
 
 - informe p1
 
 - informe p2
 
 - verificar codigo --> eliminar codigo al pedo
+
+- poner los porcentajes con 4 decimales de precicsion
+
+- hacer el LDA del murphy
 
 ### FIXES
 

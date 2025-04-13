@@ -513,9 +513,6 @@ def calculate_class_weights(y):
         if cls != majority_class:  # If it's a minority class
             weights[cls] = majority_prob / probs[i]
             
-    # Log the weights for debugging
-    print(f"Class weights: {weights}")
-    print(f"Class probabilities: {dict(zip(classes, probs))}")
     
     return weights
 
