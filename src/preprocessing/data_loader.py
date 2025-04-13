@@ -38,7 +38,7 @@ class DataLoader:
         self.data_dir = config.data_dir
         self.target_column = config.target_column
 
-        # Dataframes and processed data
+        # dataframes and processed data
         self.df_dev = None
         self.df_train = None
         self.df_valid = None
@@ -145,30 +145,50 @@ class DataLoader:
         encoder = CategoricalEncoder(categorical_columns=categorical_columns, drop_first=True)
         return encoder.fit_transform(X)
     
-    def process_data(train_df, valid_df, target_column="Diagnosis"):
-        # Resetear índices
+    def process_data(self, train_df: pd.DataFrame, valid_df: pd.DataFrame, target_column: str = "Diagnosis") -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Process training and validation data for model training.
+        
+        Parameters
+        ----------
+        train_df : pd.DataFrame
+            Training dataframe
+        valid_df : pd.DataFrame
+            Validation dataframe
+        target_column : str, default="Diagnosis"
+            Name of the target column
+            
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+            X_train, y_train, X_val, y_val as numpy arrays
+        """
+        # reset indices
         train_df = train_df.reset_index(drop=True)
         valid_df = valid_df.reset_index(drop=True)
         
-        # Separar características y variable objetivo
+        # separate features and target variable
         X_train = train_df.drop(columns=[target_column])
         y_train = train_df[target_column].to_numpy()
         
         X_val = valid_df.drop(columns=[target_column])
         y_val = valid_df[target_column].to_numpy()
         
-        # Codificar variables categóricas
-        X_train_encoded = DataLoader.encode_categorical(X_train).to_numpy()
-        X_val_encoded = DataLoader.encode_categorical(X_val).to_numpy()
+        # encode categorical variables
+        X_train_encoded = self.encode_categorical(X_train).to_numpy()
+        X_val_encoded = self.encode_categorical(X_val).to_numpy()
         
         return X_train_encoded, y_train, X_val_encoded, y_val
-
-
 
     def get_pandas_data(self, splitted: bool = True) -> Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]:
         """
         Retrieve data as pandas DataFrames and Series.
         
+        Parameters
+        ----------
+        splitted : bool, default=True
+            If True, return train, valid, test data separately
+            
         Returns
         -------
         Tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series]
@@ -211,6 +231,8 @@ class DataLoader:
             Path to save the test data.
         df_dev_dir : Optional[Path], default=None
             Path to save the development data.
+        verbose : bool, default=False
+            Whether to print information about saved files
         """
         if not any([df_train_dir, df_valid_dir, df_test_dir, df_dev_dir]):
             raise ValueError("Provide at least one path to save data (train, valid, test, or dev).")
@@ -258,6 +280,7 @@ class DataLoader:
         Returns
         -------
         self : DataLoader
+            Instance with updated data
         """
         if df_train is not None:
             self.df_train = df_train
@@ -287,14 +310,15 @@ class DataLoader:
             
         Returns
         -------
-        Tuple with test features and target.
+        Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray]]
+            Tuple with test features and target.
         """
         if self.df_test is None:
             raise ValueError("Test data not loaded yet. Call load_data() with test_file parameter first.")
         X_test = self.df_test.drop(columns=[self.target_column])
         y_test = self.df_test[self.target_column]
         if encode_categorical:
-            X_test = DataLoader.encode_categorical(X_test)
+            X_test = self.encode_categorical(X_test)
         if normalize:
             if self.mean is None or self.std is None:
                 raise ValueError("Normalization parameters not found. Ensure training data was processed with normalize=True.")

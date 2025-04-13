@@ -44,14 +44,14 @@ class DecisionTreeNode:
     """A node in the decision tree"""
     
     def __init__(self, depth: int = 0):
-        self.feature_idx: Optional[int] = None  # Feature index for split
-        self.threshold: Optional[float] = None  # Threshold value for split
-        self.left: Optional['DecisionTreeNode'] = None  # Left subtree (<=)
-        self.right: Optional['DecisionTreeNode'] = None  # Right subtree (>)
-        self.is_leaf: bool = False  # Whether this node is a leaf
-        self.class_distribution: Optional[np.ndarray] = None  # Class distribution at this node
-        self.prediction: Optional[Union[int, float]] = None  # Predicted class for leaf nodes
-        self.depth: int = depth  # Depth of the node in the tree
+        self.feature_idx: Optional[int] = None  # feature index for split
+        self.threshold: Optional[float] = None  # threshold value for split
+        self.left: Optional['DecisionTreeNode'] = None  # left subtree (<=)
+        self.right: Optional['DecisionTreeNode'] = None  # right subtree (>)
+        self.is_leaf: bool = False  # whether this node is a leaf
+        self.class_distribution: Optional[np.ndarray] = None  # class distribution at this node
+        self.prediction: Optional[Union[int, float]] = None  # predicted class for leaf nodes
+        self.depth: int = depth  # depth of the node in the tree
 
 
 class DecisionTree:
@@ -116,11 +116,11 @@ class DecisionTree:
         if m <= 1:
             return 0
         
-        # Get probabilities for each class
+        # get probabilities for each class
         _, counts = np.unique(y, return_counts=True)
         probs = counts / m
         
-        # Calculate entropy: -sum(p_i * log2(p_i))
+        # calculate entropy: -sum(p_i * log2(p_i))
         entropy = -np.sum(probs * np.log2(probs + 1e-10))
         return entropy
     
@@ -142,11 +142,11 @@ class DecisionTree:
         if m <= 1:
             return 0
         
-        # Get probabilities for each class
+        # get probabilities for each class
         _, counts = np.unique(y, return_counts=True)
         probs = counts / m
         
-        # Calculate Gini impurity: 1 - sum(p_i^2)
+        # calculate gini impurity: 1 - sum(p_i^2)
         gini = 1 - np.sum(np.square(probs))
         return gini
     
@@ -174,7 +174,7 @@ class DecisionTree:
         if m_left == 0 or m_right == 0:
             return 0
         
-        # Calculate parent impurity
+        # calculate parent impurity
         if self.criterion == "entropy":
             parent_impurity = self._entropy(y)
             left_impurity = self._entropy(y_left)
@@ -184,10 +184,10 @@ class DecisionTree:
             left_impurity = self._gini(y_left)
             right_impurity = self._gini(y_right)
         
-        # Calculate weighted average impurity of children
+        # calculate weighted average impurity of children
         weighted_child_impurity = (m_left / m) * left_impurity + (m_right / m) * right_impurity
         
-        # Information gain is the difference between parent and weighted child impurity
+        # information gain is the difference between parent and weighted child impurity
         return parent_impurity - weighted_child_impurity
     
     def _best_split(self, X: np.ndarray, y: np.ndarray, feature_indices: np.ndarray) -> Tuple[Optional[int], Optional[float], float]:
@@ -213,37 +213,37 @@ class DecisionTree:
         best_feature_idx = None
         best_threshold = None
         
-        # If too few samples, don't split
+        # if too few samples, don't split
         if m < self.min_samples_split:
             return None, None, 0
         
-        # Check each feature
+        # check each feature
         for feature_idx in feature_indices:
-            # Get unique values in this feature
+            # get unique values in this feature
             feature_values = X[:, feature_idx]
             thresholds = np.unique(feature_values)
             
-            # If only one unique value, skip this feature
+            # if only one unique value, skip this feature
             if len(thresholds) <= 1:
                 continue
             
-            # Compute thresholds between consecutive unique values for better splits
+            # compute thresholds between consecutive unique values for better splits
             thresholds = (thresholds[:-1] + thresholds[1:]) / 2
             
-            # Try each threshold
+            # try each threshold
             for threshold in thresholds:
-                # Split data based on threshold
+                # split data based on threshold
                 left_idx = feature_values <= threshold
                 right_idx = ~left_idx
                 
-                # Ensure minimum samples in each leaf
+                # ensure minimum samples in each leaf
                 if np.sum(left_idx) < self.min_samples_leaf or np.sum(right_idx) < self.min_samples_leaf:
                     continue
                 
-                # Calculate information gain
+                # calculate information gain
                 info_gain = self._information_gain(y, y[left_idx], y[right_idx])
                 
-                # Update best split if this one is better
+                # update best split if this one is better
                 if info_gain > best_info_gain:
                     best_info_gain = info_gain
                     best_feature_idx = feature_idx
@@ -272,7 +272,7 @@ class DecisionTree:
         node = DecisionTreeNode(depth=depth)
         m, n = X.shape
         
-        # Calculate class distribution at this node
+        # calculate class distribution at this node
         unique_classes, counts = np.unique(y, return_counts=True)
         class_distribution = np.zeros(self.n_classes_)
         for cls, count in zip(unique_classes, counts):
@@ -280,7 +280,7 @@ class DecisionTree:
             class_distribution[class_idx] = count
         node.class_distribution = class_distribution
         
-        # Determine number of features to consider at this node
+        # determine number of features to consider at this node
         if isinstance(self.max_features, int):
             n_features_to_consider = min(self.max_features, n)
         elif isinstance(self.max_features, float):
@@ -292,38 +292,38 @@ class DecisionTree:
         else:  # None or other values
             n_features_to_consider = n
         
-        # Randomly select feature indices to consider
-        np.random.seed(self.random_state + depth)  # Change seed at each depth for more randomness
+        # randomly select feature indices to consider
+        np.random.seed(self.random_state + depth)  # change seed at each depth for more randomness
         feature_indices = np.random.choice(n, size=n_features_to_consider, replace=False)
         
-        # Check stopping criteria
+        # check stopping criteria
         if (
             depth >= self.max_depth if self.max_depth else False
             or m < self.min_samples_split
             or len(np.unique(y)) == 1
         ):
-            # Make this a leaf node
+            # make this a leaf node
             node.is_leaf = True
-            # Most common class as prediction
+            # most common class as prediction
             node.prediction = np.argmax(class_distribution)
-            node.prediction = self.classes_[node.prediction]  # Convert back to original class
+            node.prediction = self.classes_[node.prediction]  # convert back to original class
             return node
         
-        # Find best split
+        # find best split
         best_feature_idx, best_threshold, best_info_gain = self._best_split(X, y, feature_indices)
         
-        # If no good split found, make leaf node
+        # if no good split found, make leaf node
         if best_feature_idx is None or best_info_gain <= 0:
             node.is_leaf = True
             node.prediction = np.argmax(class_distribution)
             node.prediction = self.classes_[node.prediction]
             return node
         
-        # Create split based on best feature and threshold
+        # create split based on best feature and threshold
         left_idx = X[:, best_feature_idx] <= best_threshold
         right_idx = ~left_idx
         
-        # Create child nodes
+        # create child nodes
         node.feature_idx = best_feature_idx
         node.threshold = best_threshold
         node.left = self._build_tree(X[left_idx], y[left_idx], depth + 1)
@@ -353,7 +353,7 @@ class DecisionTree:
         for i in range(m):
             current_node = node
             
-            # Traverse the tree until a leaf node is reached
+            # traverse the tree until a leaf node is reached
             while not current_node.is_leaf:
                 if X[i, current_node.feature_idx] <= current_node.threshold:
                     current_node = current_node.left
@@ -386,14 +386,14 @@ class DecisionTree:
         for i in range(m):
             current_node = node
             
-            # Traverse the tree until a leaf node is reached
+            # traverse the tree until a leaf node is reached
             while not current_node.is_leaf:
                 if X[i, current_node.feature_idx] <= current_node.threshold:
                     current_node = current_node.left
                 else:
                     current_node = current_node.right
             
-            # Use class distribution at leaf node as probabilities
+            # use class distribution at leaf node as probabilities
             probas[i] = current_node.class_distribution / np.sum(current_node.class_distribution)
         
         return probas
@@ -414,22 +414,22 @@ class DecisionTree:
         self : DecisionTree
             Fitted estimator
         """
-        # Convert inputs to numpy arrays
+        # convert inputs to numpy arrays
         X = np.asarray(X, dtype=np.float64)
         y = np.asarray(y)
         
-        # Check input shapes
+        # check input shapes
         if X.shape[0] != y.shape[0]:
             raise ValueError(f"X and y have incompatible shapes: {X.shape[0]} vs {y.shape[0]}")
         
-        # Save number of features
+        # save number of features
         self.n_features_ = X.shape[1]
         
-        # Get unique classes and count them
+        # get unique classes and count them
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
         
-        # Build the tree
+        # build the tree
         self.tree_ = self._build_tree(X, y)
         self.is_fitted = True
         
@@ -454,7 +454,7 @@ class DecisionTree:
         
         X = np.asarray(X, dtype=np.float64)
         
-        # Check feature shape
+        # check feature shape
         if X.shape[1] != self.n_features_:
             raise ValueError(f"X has {X.shape[1]} features, but DecisionTree is expecting {self.n_features_} features.")
         
@@ -479,7 +479,7 @@ class DecisionTree:
         
         X = np.asarray(X, dtype=np.float64)
         
-        # Check feature shape
+        # check feature shape
         if X.shape[1] != self.n_features_:
             raise ValueError(f"X has {X.shape[1]} features, but DecisionTree is expecting {self.n_features_} features.")
         
@@ -503,11 +503,11 @@ class RandomForest(BaseModel):
         super().__init__(config or RandomForestConfig())
         self.config: RandomForestConfig = config or RandomForestConfig()
         
-        # Model parameters
-        self.trees_: List[DecisionTree] = []  # List of decision trees
-        self.classes_: Optional[np.ndarray] = None  # Unique class labels
-        self.n_classes_: Optional[int] = None  # Number of classes
-        self.n_features_: Optional[int] = None  # Number of features
+        # model parameters
+        self.trees_: List[DecisionTree] = []  # list of decision trees
+        self.classes_: Optional[np.ndarray] = None  # unique class labels
+        self.n_classes_: Optional[int] = None  # number of classes
+        self.n_features_: Optional[int] = None  # number of features
         
     def fit(self, X: np.ndarray, y: np.ndarray) -> 'RandomForest':
         """
@@ -525,48 +525,48 @@ class RandomForest(BaseModel):
         self : RandomForest
             Fitted estimator
         """
-        # Convert inputs to numpy arrays
+        # convert inputs to numpy arrays
         X = np.asarray(X, dtype=np.float64)
         y = np.asarray(y)
         
-        # Check input shapes
+        # check input shapes
         if X.shape[0] != y.shape[0]:
             raise ValueError(f"X and y have incompatible shapes: {X.shape[0]} vs {y.shape[0]}")
         
-        # Save number of features and classes
+        # save number of features and classes
         self.n_features_ = X.shape[1]
         self.classes_ = np.unique(y)
         self.n_classes_ = len(self.classes_)
         
-        # Get sample size for bootstrapping
+        # get sample size for bootstrapping
         n_samples = X.shape[0]
         
-        # Initialize the forest
+        # initialize the forest
         self.trees_ = []
         
-        # Build each tree in the forest
+        # build each tree in the forest
         for i in range(self.config.n_estimators):
-            # Create a new tree with current config
+            # create a new tree with current config
             tree = DecisionTree(
                 max_depth=self.config.max_depth,
                 min_samples_split=self.config.min_samples_split,
                 min_samples_leaf=self.config.min_samples_leaf,
                 max_features=self.config.max_features,
                 criterion=self.config.criterion,
-                random_state=self.config.random_state + i  # Different seed for each tree
+                random_state=self.config.random_state + i  # different seed for each tree
             )
             
-            # Bootstrap sample if requested
+            # bootstrap sample if requested
             if self.config.bootstrap:
-                # Sample with replacement
+                # sample with replacement
                 indices = np.random.choice(n_samples, size=n_samples, replace=True)
                 X_bootstrap, y_bootstrap = X[indices], y[indices]
                 tree.fit(X_bootstrap, y_bootstrap)
             else:
-                # Use all data for each tree (still uses feature subsampling)
+                # use all data for each tree (still uses feature subsampling)
                 tree.fit(X, y)
             
-            # Add tree to forest
+            # add tree to forest
             self.trees_.append(tree)
             
             if self.config.verbose and (i % 10 == 0 or i == self.config.n_estimators - 1):
@@ -592,20 +592,20 @@ class RandomForest(BaseModel):
         self._check_is_fitted()
         X = np.asarray(X, dtype=np.float64)
         
-        # Check feature shape
+        # check feature shape
         if X.shape[1] != self.n_features_:
             raise ValueError(f"X has {X.shape[1]} features, but RandomForest is expecting {self.n_features_} features.")
         
-        # Get predictions from all trees
+        # get predictions from all trees
         n_samples = X.shape[0]
         probas = np.zeros((n_samples, self.n_classes_))
         
-        # Aggregate predictions from all trees
+        # aggregate predictions from all trees
         for tree in self.trees_:
             tree_probas = tree.predict_proba(X)
             probas += tree_probas
         
-        # Average predictions
+        # average predictions
         probas /= len(self.trees_)
         
         return probas
@@ -627,13 +627,13 @@ class RandomForest(BaseModel):
         self._check_is_fitted()
         X = np.asarray(X, dtype=np.float64)
         
-        # Get probabilities
+        # get probabilities
         probas = self.predict_prob(X)
         
-        # Get class with highest probability
+        # get class with highest probability
         y_pred_idx = np.argmax(probas, axis=1)
         
-        # Map indices back to original classes
+        # map indices back to original classes
         return self.classes_[y_pred_idx]
     
     def feature_importances(self) -> np.ndarray:
@@ -647,19 +647,16 @@ class RandomForest(BaseModel):
         """
         self._check_is_fitted()
         
-        # This is a simplified approach that would need more complete implementation
-        # in a production-level Random Forest. In a full implementation, this would
-        # track impurity decreases at each node weighted by number of samples.
-        # Here we simply count feature usage frequency as a proxy.
+        # simplified approach that would need more complete implementation in a production-level random forest
         
-        # Initialize feature importance array
+        # initialize feature importance array
         feature_importances = np.zeros(self.n_features_)
         
-        # Count features used in split nodes
+        # count features used in split nodes
         for tree in self.trees_:
             self._count_feature_usage(tree.tree_, feature_importances)
         
-        # Normalize to sum to 1
+        # normalize to sum to 1
         if np.sum(feature_importances) > 0:
             feature_importances /= np.sum(feature_importances)
         
@@ -679,9 +676,9 @@ class RandomForest(BaseModel):
         if node is None or node.is_leaf:
             return
         
-        # Increment count for this feature
+        # increment count for this feature
         importances[node.feature_idx] += 1
         
-        # Recurse on children
+        # recurse on children
         self._count_feature_usage(node.left, importances)
         self._count_feature_usage(node.right, importances) 

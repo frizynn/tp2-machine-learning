@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List, Tuple, Union
+from dataclasses import dataclass
+from typing import Dict, Any
 
 import numpy as np
 
@@ -79,7 +79,14 @@ class BaseModel(ABC):
         pass
     
     def _check_is_fitted(self) -> None:
-        """Check if the model is fitted"""
+        """
+        Check if the model is fitted before making predictions.
+        
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+        """
         if not self.is_fitted:
             raise ValueError("Model is not fitted yet. Call 'fit' before using this method.")
     
