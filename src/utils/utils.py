@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from IPython.display import display, HTML
-
+from preprocessing.data_loader import DataLoader
 from models.logistic_regression import LogisticRegression
 from evaluation.metrics import (
     confusion_matrix, accuracy_score, precision_score, 
@@ -20,17 +20,62 @@ from utils.visuals import (
 
 from preprocessing.imputation import KNNImputer
 
-def train_valid_split(df, test_size=0.2, random_state=42):
+def train_valid_split(df, test_size=0.2, random_state=42, stratify=None):
     """
     Divide un DataFrame en conjuntos de entrenamiento y validación.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame a dividir
+    test_size : float, default=0.2
+        Proporción del conjunto de datos a incluir en la división de validación
+    random_state : int, default=42
+        Semilla para la reproducibilidad
+    stratify : array-like, optional
+        Array de etiquetas para realizar una división estratificada. Si se proporciona,
+        la distribución de clases en los conjuntos de entrenamiento y validación
+        será similar a la del conjunto original.
+        
+    Returns
+    -------
+    tuple
+        (df_train, df_valid) - DataFrames de entrenamiento y validación
     """
     np.random.seed(random_state)
-    shuffled_indices = np.random.permutation(len(df))
-    test_set_size = int(len(df) * test_size)
-    valid_indices = shuffled_indices[:test_set_size]
-    train_indices = shuffled_indices[test_set_size:]
+    
+    if stratify is not None:
+        # Obtener índices únicos para cada clase
+        unique_classes = np.unique(stratify)
+        train_indices = []
+        valid_indices = []
+        
+        for cls in unique_classes:
+            # Obtener índices para la clase actual
+            cls_indices = np.where(stratify == cls)[0]
+            np.random.shuffle(cls_indices)
+            
+            # Calcular tamaño de validación para esta clase
+            cls_test_size = int(len(cls_indices) * test_size)
+            
+            # Dividir índices
+            valid_indices.extend(cls_indices[:cls_test_size])
+            train_indices.extend(cls_indices[cls_test_size:])
+            
+        # Convertir a arrays numpy y mezclar
+        train_indices = np.array(train_indices)
+        valid_indices = np.array(valid_indices)
+        np.random.shuffle(train_indices)
+        np.random.shuffle(valid_indices)
+        
+    else:
+        # División aleatoria simple
+        shuffled_indices = np.random.permutation(len(df))
+        test_set_size = int(len(df) * test_size)
+        valid_indices = shuffled_indices[:test_set_size]
+        train_indices = shuffled_indices[test_set_size:]
+    
     return df.iloc[train_indices], df.iloc[valid_indices]
-
 ##################################################
 # Helper Functions: Cálculo de curvas y AUC
 ##################################################
@@ -247,11 +292,41 @@ def evaluate_model(model, X_test, y_test, class_names=None, threshold=0.5, pos_l
     return metrics
 
 
-def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", show_plot=False, individual_plots=False, subplots=True):
+def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", show_plot=False, individual_plots=False, subplots=True,
+                      title_fontsize=20, label_fontsize=16, tick_fontsize=14, legend_fontsize=14):
     """
     Evalúa múltiples modelos sobre el mismo conjunto de datos,
     generando una tabla comparativa de métricas y (opcionalmente) gráficos comparativos.
     Utiliza get_model_metrics y plot_model_evaluation para una mejor organización del código.
+    
+    Parameters
+    ----------
+    all_models : dict
+        Diccionario de modelos a evaluar
+    X : array-like
+        Features del conjunto a evaluar
+    y : array-like
+        Etiquetas verdaderas
+    class_names : list
+        Nombres de las clases para los gráficos
+    output_dir : str
+        Directorio para guardar los resultados
+    prefix : str, default=""
+        Prefijo para los archivos generados
+    show_plot : bool, default=False
+        Si es True, muestra los gráficos
+    individual_plots : bool, default=False
+        Si es True, genera gráficos individuales para cada modelo
+    subplots : bool, default=True
+        Si es True, combina gráficos en subplots
+    title_fontsize : int, default=20
+        Tamaño de fuente para títulos
+    label_fontsize : int, default=16
+        Tamaño de fuente para etiquetas de ejes
+    tick_fontsize : int, default=14
+        Tamaño de fuente para ticks
+    legend_fontsize : int, default=14
+        Tamaño de fuente para leyendas
     """
     # Evaluar todos los modelos
     print(f"Evaluando modelos en el conjunto de {prefix if prefix else 'validación'}")
@@ -274,7 +349,7 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
             plot_model_evaluation(
                 metrics=metrics,
                 class_names=class_names,
-                figsize=(10, 6),
+                figsize=(12, 8),  # Aumentado de (10, 6) a (12, 8)
                 save_dir=output_dir,
                 base_filename=f"{model_name.replace(' ', '_').lower()}_{prefix}",
                 show_plots=show_plot,
@@ -304,10 +379,30 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
     metrics_file_path = os.path.join(output_dir, f"{prefix}_metrics_comparison.csv")
     metrics_df.to_csv(metrics_file_path, index=False)
     
+    # Configurar tamaños de fuente
+    _set_font_sizes = plt.rcParams.copy()
+    plt.rcParams.update({
+        'axes.titlesize': title_fontsize,
+        'axes.labelsize': label_fontsize,
+        'xtick.labelsize': tick_fontsize,
+        'ytick.labelsize': tick_fontsize,
+        'legend.fontsize': legend_fontsize
+    })
+    
     # Generar gráficos comparativos si se solicita
     if show_plot:
         models_for_plotting = {name: {"model": all_models[name]["model"], "metrics": evaluation_metrics[name]} for name in all_models}
-        plot_comparative_curves(models_for_plotting, output_dir, prefix=f"{prefix}_", show_plot=show_plot, subplots=subplots)
+        plot_comparative_curves(
+            models_for_plotting, 
+            output_dir, 
+            prefix=f"{prefix}_", 
+            show_plot=show_plot, 
+            subplots=subplots,
+            figsize=(20, 10)  # Aumentado de tamaño predeterminado a (20, 10)
+        )
+    
+    # Restaurar la configuración original de fuentes
+    plt.rcParams.update(_set_font_sizes)
     
     return metrics_df, evaluation_metrics
 
@@ -350,6 +445,7 @@ def analyze_null_values(dataframes, dataset_names=None):
         }
         print("\n")
     return results
+
 def remove_negative_values(df, numerical_cols):
     """
     Reemplaza todos los valores negativos en las columnas numéricas del DataFrame por NaN.
@@ -442,6 +538,7 @@ def apply_feature_engineering(df, transformations, inplace=False, verbose=False)
             print(f"Aplicando transformación para la feature: '{new_feature}'")
         df[new_feature] = transform_func(df)
     return df
+
 def save_processed_data(loader, data_dict, data_dir, dataset_name, processing_type="preprocessed"):
     """
     Guarda los datos procesados o preprocesados en archivos CSV.
@@ -553,3 +650,26 @@ def format_metrics_table(metrics_df, title="Metrics Summary"):
     print(f"\n===== {title} =====")
     display(display_df)
     return display_df
+
+
+def process_training_data(train_df, valid_df, target_column="Diagnosis", encode_categorical=True):
+    # Resetear índices
+    train_df = train_df.reset_index(drop=True)
+    valid_df = valid_df.reset_index(drop=True)
+    
+
+    X_train = train_df.drop(columns=[target_column])
+    y_train = train_df[target_column].to_numpy()
+    
+    X_val = valid_df.drop(columns=[target_column])
+    y_val = valid_df[target_column].to_numpy()
+    
+    # Codificar variables categóricas
+    if encode_categorical:
+        X_train_encoded = DataLoader.encode_categorical(X_train).to_numpy()
+        X_val_encoded = DataLoader.encode_categorical(X_val).to_numpy()
+    else:
+        X_train_encoded = X_train.to_numpy()
+        X_val_encoded = X_val.to_numpy()
+    
+    return X_train_encoded, y_train, X_val_encoded, y_val

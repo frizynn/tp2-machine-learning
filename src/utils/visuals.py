@@ -241,6 +241,7 @@ def plot_confusion_matrix(conf_matrix: np.ndarray, class_names: Optional[List[st
     if save_dir and filename:
         _save_plot(os.path.join(save_dir, filename), dpi)
     return ax.figure
+
 def plot_roc_curve(fpr: np.ndarray, tpr: np.ndarray, auc_score: Optional[float] = None,
                    figsize: tuple = (10, 8),
                    title: str = 'Curva ROC (Característica Operativa del Receptor)',
@@ -260,13 +261,13 @@ def plot_roc_curve(fpr: np.ndarray, tpr: np.ndarray, auc_score: Optional[float] 
     ax.plot([0, 1], [0, 1], 'k--', alpha=0.8)  # línea diagonal
     ax.set_xlim([0.0, 1.0])
     ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('Tasa de Falsos Positivos', fontsize=12)
-    ax.set_ylabel('Tasa de Verdaderos Positivos', fontsize=12)
+    ax.set_xlabel('Tasa de Falsos Positivos', fontsize=16)
+    ax.set_ylabel('Tasa de Verdaderos Positivos', fontsize=16)
     if title:
         ax.set_title(title, fontsize=16)
     ax.grid(True, alpha=0.3)
     if curve_label:
-        ax.legend(loc='lower right', frameon=True, fontsize=10)
+        ax.legend(loc='lower right', frameon=True, fontsize=16)
     if save_dir and filename and not multiple_curves:
         _save_plot(os.path.join(save_dir, filename), dpi)
     if not multiple_curves:
@@ -291,13 +292,13 @@ def plot_precision_recall_curve(precision: np.ndarray, recall: np.ndarray,
     ax.plot(recall, precision, color=color, linestyle=linestyle, label=curve_label)
     ax.set_xlim([0.0, 1.0])
     ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('Recall', fontsize=12)
-    ax.set_ylabel('Precision', fontsize=12)
+    ax.set_xlabel('Recall', fontsize=16)
+    ax.set_ylabel('Precision', fontsize=16)
     if title:
         ax.set_title(title, fontsize=16)
     ax.grid(True, alpha=0.3)
     if curve_label:
-        ax.legend(loc='best', frameon=True, fontsize=10)
+        ax.legend(loc='best', frameon=True, fontsize=16)
     if save_dir and filename and not multiple_curves:
         _save_plot(os.path.join(save_dir, filename), dpi)
     if not multiple_curves:
@@ -318,7 +319,7 @@ def plot_lambda_tuning(lambda_values: List[float], scores: List[float],
         best_score = scores[best_idx]
         plt.axvline(x=best_lambda, color='red', linestyle='--', alpha=0.7)
         plt.plot(best_lambda, best_score, 'ro', markersize=10, label=f'Mejor λ = {best_lambda}')
-        plt.legend(fontsize=8)
+        plt.legend(fontsize=16)
     plt.xlabel('Lambda (λ)', fontsize=24)
     plt.ylabel(metric_name, fontsize=24)
     plt.grid(True, alpha=0.3)
@@ -330,10 +331,25 @@ def plot_lambda_tuning(lambda_values: List[float], scores: List[float],
     plt.show()
 
 def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
-                            show_plot: bool = False, subplots: bool = True):
+                            show_plot: bool = False, subplots: bool = True, figsize=(18, 8)):
     """
     Genera gráficos comparativos (curvas ROC y PR) para múltiples modelos.
     Si los datos de curva no están disponibles, genera un gráfico de barras con los valores AUC.
+    
+    Parameters
+    ----------
+    all_models : Dict
+        Diccionario con modelos y métricas asociadas
+    output_dir : str
+        Directorio donde guardar los gráficos
+    prefix : str, default=""
+        Prefijo para los archivos generados
+    show_plot : bool, default=False
+        Si es True, muestra los gráficos
+    subplots : bool, default=True
+        Si es True, combina gráficos en subplots
+    figsize : tuple, default=(18, 8)
+        Tamaño de la figura (ancho, alto)
     """
     colors = ['blue', 'green', 'red', 'purple', 'orange']
     linestyles = ['-', '--', ':', '-.', '-']
@@ -348,7 +364,7 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
     if not can_plot_curves:
         print("No se pueden generar gráficos comparativos porque las métricas no contienen datos de curva.")
         print("Solo se tienen valores numéricos de AUC-ROC y AUC-PR.")
-        plt.figure(figsize=(10, 6))
+        plt.figure(figsize=figsize)
         model_names = list(all_models.keys())
         roc_values = [model_data["metrics"]["roc"] for model_data in all_models.values()]
         pr_values = [model_data["metrics"]["pr"] for model_data in all_models.values()]
@@ -373,7 +389,7 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
         return bar_path
 
     if subplots:
-        fig, (ax_roc, ax_pr) = plt.subplots(1, 2, figsize=(18, 8))
+        fig, (ax_roc, ax_pr) = plt.subplots(1, 2, figsize=figsize)
         # Curvas ROC
         for i, (name, model_data) in enumerate(all_models.items()):
             roc_data = model_data.get("metrics", {}).get("roc", {})
@@ -408,8 +424,11 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
             plt.close()
         return combined_path
     else:
+        # Valores individuales para tamaños de gráficos separados
+        single_figsize = (figsize[0]//2, figsize[1])
+        
         # Gráficos por separado para ROC y PR
-        fig_roc, ax_roc = plt.subplots(figsize=(10, 8))
+        fig_roc, ax_roc = plt.subplots(figsize=single_figsize)
         for i, (name, model_data) in enumerate(all_models.items()):
             roc_data = model_data.get("metrics", {}).get("roc", {})
             if isinstance(roc_data, dict) and "auc" in roc_data:
@@ -426,7 +445,7 @@ def plot_comparative_curves(all_models: Dict, output_dir: str, prefix: str = "",
         if not show_plot:
             plt.close()
         
-        fig_pr, ax_pr = plt.subplots(figsize=(10, 8))
+        fig_pr, ax_pr = plt.subplots(figsize=single_figsize)
         for i, (name, model_data) in enumerate(all_models.items()):
             pr_data = model_data.get("metrics", {}).get("pr", {})
             if isinstance(pr_data, dict) and "average_precision" in pr_data:
@@ -653,3 +672,64 @@ def save_or_show_plot(fig, save_dir, base_filename, show_plot):
         plt.show()
     else:
         plt.close(fig)
+
+def plot_data_analysis_all_visualizations(df, numerical_cols, target_column, features_to_plot, output_dir, fig_output_dir_p1, fig_params={}):
+
+    
+    dist_params = fig_params.get("dist_params", {
+        "filename": "numerical_distributions_outliers.png",
+        "features_to_plot":features_to_plot,
+        "tick_fontsize": 18,
+        "label_fontsize": 18,
+        "title_fontsize": 18,
+        "title": " ",
+        "figsize": (16, 5)
+    })
+
+   
+    
+    
+    # Plot numerical distributions
+    fig1 = plot_numerical_distributions(
+        df,
+        numerical_cols,
+        target_column,
+        output_dir=output_dir,
+        **dist_params
+    )
+    plt.show()
+
+    heatmap_params = fig_params.get("heatmap_params", {
+            "label_fontsize": 18,
+            "title_fontsize": 18,
+            "tick_fontsize": 18,
+            "cbar_fontsize": 18,
+            "annot_fontsize": 18,
+            "figsize": (18, 12),
+            "title": " ",
+            "filename": "correlation_heatmap_numerical_features_outliers.png"
+        })
+
+    # Plot correlation heatmap
+    fig2 = plot_correlation_heatmap(
+        df,
+        numerical_cols + [target_column],
+        output_dir=fig_output_dir_p1,
+        **heatmap_params
+    )
+    plt.show()
+
+
+    outlier_params = fig_params.get("outlier_params", {
+        "filename": "boxplots_outliers_analysis.png",
+        "features_to_plot":features_to_plot,
+        "figsize": (16, 5)
+    })
+
+    # Plot outliers analysis
+    fig3 = plot_outliers_analysis(
+        df=df,
+        save_dir=fig_output_dir_p1,
+        **outlier_params
+    )
+    return fig1, fig2, fig3

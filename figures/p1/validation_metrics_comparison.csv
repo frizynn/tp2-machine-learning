@@ -1,0 +1,6 @@
+Model,Accuracy,Precision,Recall,F-Score,AUC-ROC,AUC-PR
+No rebalancing,0.8884,0.8113,0.7167,0.7611,0.9561,0.8508
+Undersampling,0.9132,0.8000,0.8667,0.8320,0.9584,0.8468
+Oversampling duplicate,0.7645,1.0000,0.0500,0.0952,0.9638,0.8667
+Oversampling SMOTE,0.9174,0.8030,0.8833,0.8413,0.9641,0.8656
+Cost re-weighting,0.9132,0.7910,0.8833,0.8346,0.9668,0.8819
