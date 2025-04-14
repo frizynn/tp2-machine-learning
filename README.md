@@ -1,176 +1,153 @@
-# Proyecto de Aprendizaje Automático - TP2
+# Trabajo Práctico 2 - Aprendizaje Automático
 
-## Descripción
+## Descripción General
 
-Este proyecto implementa varios algoritmos de aprendizaje automático desde cero utilizando NumPy, para resolver dos problemas de clasificación:
+Este proyecto aborda dos problemas de clasificación utilizando implementaciones propias (exclusivamente con NumPy) de algoritmos de Machine Learning. El objetivo es resolver tareas reales de diagnóstico biomédico y predicción deportiva, siguiendo las mejores prácticas de ingeniería de software y ciencia de datos.
 
-1. **Diagnóstico de Cáncer de Mama**: Clasificación binaria para determinar si una célula presenta características compatibles con cáncer, basándose en mediciones morfológicas y bioquímicas.
+- **Problema 1:** Diagnóstico de Cáncer de Mama (Clasificación Binaria)
+- **Problema 2:** Predicción de Rendimiento de Jugadores de Basketball (Clasificación Multiclase)
 
-2. **Predicción de Rendimiento de Jugadores de Baloncesto**: Clasificación multiclase para predecir la métrica WAR (Wins Above Replacement) de jugadores de baloncesto, categorizados en: Negative WAR, Null WAR y Positive WAR.
+El código es modular, escalable y está organizado para facilitar la reutilización, el análisis y la comparación de modelos.
 
-Este proyecto ha sido desarrollado como parte del Trabajo Práctico 2 para la materia de Aprendizaje Automático.
-
-## Características
-
-- Implementación desde cero (utilizando exclusivamente NumPy) de:
-  - Regresión Logística con regularización L2
-  - Análisis Discriminante Lineal (LDA)
-  - Bosque Aleatorio (Random Forest)
-  - Técnicas de rebalanceo: SMOTE, Undersampling, Oversampling
-  - Métricas de evaluación: Accuracy, Precision, Recall, F1, ROC, AUC, PR-Curve
-
-- Módulos para preprocesamiento de datos:
-  - Normalización y estandarización
-  - Manejo de valores faltantes
-  - Codificación de variables categóricas
-  - Detección y tratamiento de outliers
-
-- Sistema completo de evaluación y visualización:
-  - Matrices de confusión
-  - Curvas ROC y PR
-  - Comparativas visuales de modelos
-  - Validación cruzada
+---
 
 ## Estructura del Proyecto
 
 ```
 .
-├── data/                          # Datos de entrada
-│   ├── p1/                        # Datos para el problema 1 (Cáncer de Mama)
-│   └── p2/                        # Datos para el problema 2 (Rendimiento Baloncesto)
-├── src/                           # Código fuente
-│   ├── config/                    # Configuraciones
-│   │   ├── __init__.py
-│   │   └── plot_config.py         # Configuraciones para gráficos
-│   ├── evaluation/                # Módulos de evaluación
-│   │   ├── cross_validation.py    # Implementación de validación cruzada
-│   │   └── metrics.py             # Implementación de métricas de evaluación
-│   ├── models/                    # Implementación de modelos
-│   │   ├── base.py                # Clase base para todos los modelos
-│   │   ├── lda.py                 # Análisis Discriminante Lineal
-│   │   ├── logistic_regression.py # Regresión Logística
-│   │   └── random_forest.py       # Bosque Aleatorio
-│   ├── preprocessing/             # Módulos de preprocesamiento
-│   │   ├── categorical_encoder.py # Codificación de variables categóricas
-│   │   ├── data_loader.py         # Cargador de datos
-│   │   ├── imputation.py          # Manejo de valores faltantes
-│   │   ├── outliers.py            # Detección y tratamiento de outliers
-│   │   └── rebalancing.py         # Técnicas de rebalanceo de clases
-│   ├── utils/                     # Utilidades
-│   │   ├── utils.py               # Funciones auxiliares generales
-│   │   └── visuals.py             # Funciones para visualización
-│   └── Lebrero_Juan_Francisco_TP2.ipynb  # Notebook principal con el desarrollo
-├── figures/                       # Gráficos y visualizaciones generadas
-├── requirements.txt               # Dependencias del proyecto
-└── README.md                      # Este archivo
+├── data/
+│   ├── p1/                  # Datos y descripciones para Problema 1
+│   │   ├── raw/             # Datos originales (csv)
+│   │   └── cell_diagnosis_description.md
+│   └── p2/                  # Datos y descripciones para Problema 2
+│       ├── raw/             # Datos originales (csv)
+│       └── WAR_class.md
+├── src/
+│   ├── models/              # Implementaciones de modelos ML (NumPy puro)
+│   ├── preprocessing/       # Preprocesamiento, rebalanceo, outliers, etc.
+│   ├── evaluation/          # Métricas y validación cruzada
+│   ├── utils/               # Utilidades y visualizaciones
+│   └── Lebrero_Juan_Francisco_TP2.ipynb  # Notebook principal
+├── figures/                 # Gráficos y visualizaciones generadas
+├── requirements.txt         # Dependencias
+├── README.md                # Este archivo
+└── ...
 ```
 
-## Requisitos
+---
 
-- Python 3.8+
-- Dependencias:
+## Datasets y Variables
+
+### Problema 1: Diagnóstico de Cáncer de Mama
+- **Archivos:**
+  - `cell_diagnosis_balanced_dev.csv`, `cell_diagnosis_balanced_test.csv`
+  - `cell_diagnosis_imbalanced_dev.csv`, `cell_diagnosis_imbalanced_test.csv`
+- **Descripción de variables:** (ver `data/p1/cell_diagnosis_description.md`)
+  - **Numéricas:** CellSize, CellShape, NucleusDensity, ChromatinTexture, CytoplasmSize, CellAdhesion, MitosisRate, NuclearMembrane, GrowthFactor, OxygenSaturation, Vascularization, InflammationMarkers
+  - **Categóricas:** CellType (`Epithelial`, `Mesenchymal`, `Unknown`), GeneticMutation (`Present`, `Absent`, `Unknown`)
+  - **Objetivo:** Diagnosis (0: normal, 1: anómala)
+
+### Problema 2: Rendimiento de Jugadores de Basketball
+- **Archivos:**
+  - `WAR_class_dev.csv`, `WAR_class_test.csv`
+- **Descripción de variables:** (ver `data/p2/WAR_class.md`)
+  - poss: Posesiones
+  - mp: Minutos jugados
+  - off_def: Impacto ofensivo/defensivo
+  - pace_impact: Impacto en el ritmo de juego
+  - **Objetivo:** WAR_class (1: Negative, 2: Null, 3: Positive)
+
+---
+
+## Implementaciones y Funcionalidades
+
+- **Modelos desde cero (NumPy):**
+  - Regresión Logística (binaria y multiclase, regularización L2)
+  - Análisis Discriminante Lineal (LDA)
+  - Bosque Aleatorio (Random Forest, entropía)
+- **Preprocesamiento:**
+  - Normalización/estandarización
+  - Imputación de valores faltantes
+  - Codificación de variables categóricas
+  - Detección y tratamiento de outliers
+  - Técnicas de rebalanceo: Undersampling, Oversampling, SMOTE, Cost Reweighting
+- **Evaluación y Visualización:**
+  - Métricas: Accuracy, Precision, Recall, F1, Matriz de confusión, Curvas ROC y PR, AUC-ROC, AUC-PR
+  - Validación cruzada y búsqueda de hiperparámetros
+  - Gráficos comparativos y reportes automáticos
+
+---
+
+## Instalación y Requisitos
+
+- **Python 3.8+**
+- **Dependencias:**
   - numpy
   - pandas
   - matplotlib
   - seaborn
+  - jupyter (opcional para notebooks)
 
-## Instalación
+Instalación recomendada:
 
-1. Clona este repositorio:
-   ```bash
-   git clone https://github.com/yourusername/tp2-machine-learning.git
-   cd tp2-machine-learning
-   ```
+```bash
+python -m venv env
+source env/bin/activate  # En Windows: env\Scripts\activate
+pip install -r requirements.txt
+```
 
-2. Crea un entorno virtual e instala las dependencias:
-   ```bash
-   python -m venv env
-   source env/bin/activate  # En Windows: env\Scripts\activate
-   pip install -r requirements.txt
-   ```
+---
 
-## Uso
+## Ejecución y Uso
 
-### Ejecutar el Notebook
-El proyecto se puede ejecutar y explorar mediante el notebook principal:
+### 1. Notebook principal
+
+Ejecuta y explora el flujo completo desde el notebook:
 
 ```bash
 jupyter notebook src/Lebrero_Juan_Francisco_TP2.ipynb
 ```
 
-### Usar los modelos implementados
-
-Los modelos están diseñados para usarse de forma similar a scikit-learn:
+### 2. Uso de los modelos (ejemplo)
 
 ```python
-# Ejemplo de uso de la Regresión Logística
 from src.models.logistic_regression import LogisticRegression, LogisticRegressionConfig
 
-# Configurar el modelo
 config = LogisticRegressionConfig(
     learning_rate=0.01,
     max_iter=1000,
-    lambda_reg=0.1,  # Regularización L2
+    lambda_reg=0.1,
     random_state=42
 )
-
-# Crear y entrenar el modelo
 model = LogisticRegression(config)
 model.fit(X_train, y_train)
-
-# Realizar predicciones
 y_pred = model.predict(X_test)
 y_prob = model.predict_prob(X_test)
 ```
 
-### Evaluación de modelos
+### 3. Evaluación y métricas
 
 ```python
 from src.evaluation.metrics import accuracy_score, precision_score, recall_score, f1_score
 from src.utils.utils import evaluate_model
 
-# Evaluación manual
 accuracy = accuracy_score(y_test, y_pred)
 precision = precision_score(y_test, y_pred)
 recall = recall_score(y_test, y_pred)
 f1 = f1_score(y_test, y_pred)
 
-# O usando la función de evaluación completa
 metrics = evaluate_model(model, X_test, y_test, show_plots=True)
 ```
 
-## Modelos Implementados
+---
 
-### 1. Regresión Logística
-- Implementación completa con regularización L2
-- Soporte para problemas binarios y multiclase
-- Optimización mediante descenso de gradiente
-- Configuración de hiperparámetros como tasa de aprendizaje y fuerza de regularización
+## Créditos y Licencia
 
-### 2. Análisis Discriminante Lineal (LDA)
-- Implementación para problemas multiclase
-- Estimación de matrices de covarianza y probabilidades a priori
-- Proyección a espacio discriminante de menor dimensión
+- Autor: Juan Francisco Lebrero
+- Licencia: MIT (ver LICENSE)
 
-### 3. Bosque Aleatorio (Random Forest)
-- Implementación desde cero de árboles de decisión y ensemble
-- Criterio de división basado en entropía
-- Parámetros configurables: número de árboles, profundidad máxima, número de características a considerar
+---
 
-## Técnicas de Rebalanceo
-
-Se implementaron las siguientes técnicas para manejar conjuntos de datos desbalanceados:
-
-1. **Undersampling**: Reducción aleatoria de la clase mayoritaria
-2. **Oversampling**: Duplicación aleatoria de la clase minoritaria
-3. **SMOTE**: Generación sintética de ejemplos de la clase minoritaria
-4. **Cost Reweighting**: Ajuste de pesos en la función de pérdida
-
-
-## Licencia
-
-Este proyecto está licenciado bajo la licencia MIT - ver el archivo LICENSE para más detalles.
-
-## Contacto
-
-Juan Francisco Lebrero - [GitHub](https://github.com/frizynn)
+## Referencias
+- Enunciado y datasets provistos por la cátedra de Aprendizaje Automático, UdeSA.
+- Ver `Consigna_TP2_ML.pdf` para detalles completos del trabajo práctico.

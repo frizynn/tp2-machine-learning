@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from typing import List
 from IPython.display import display, HTML
 from preprocessing.data_loader import DataLoader
 from models.logistic_regression import LogisticRegression
