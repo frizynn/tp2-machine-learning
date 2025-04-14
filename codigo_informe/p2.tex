@@ -1,0 +1,79 @@
+\begin{multicols}{2}
+    
+
+\begin{abstract}
+Este trabajo aborda la clasificación del impacto de jugadores de baloncesto profesional, utilizando la métrica \texttt{WAR\_class} derivada de \texttt{war\_total}. Se aplicaron técnicas de preprocesamiento sobre un conjunto de datos reales, incluyendo imputación por KNN y winsorización por IQR. Se entrenaron y evaluaron tres modelos supervisados: regresión logística, análisis discriminante lineal (LDA) y Random Forest, empleando validación cruzada y F1-score ponderado como métrica principal.
+
+Los resultados indican que Random Forest alcanzó el mejor desempeño global, con un F1-score de 0,9580 en el conjunto de prueba, mostrando alta precisión y robustez. LDA obtuvo resultados estables (F1 = 0,9020), mientras que la regresión logística mejoró significativamente tras calibración. El modelo propuesto es reproducible, eficiente y adaptable a tareas similares de clasificación multiclase en contextos deportivos.
+\end{abstract}
+
+
+\section{Introducción}
+
+Evaluar el impacto individual de los jugadores en deportes de equipo es fundamental para la toma de decisiones técnicas y estratégicas. En el baloncesto profesional, la métrica \textit{Wins Above Replacement} (WAR) permite estimar el aporte global de un jugador respecto a un reemplazo promedio, integrando múltiples aspectos del rendimiento en una sola medida cuantitativa.
+
+Con el fin de facilitar su interpretación y aplicación práctica, este trabajo plantea la clasificación del impacto de los jugadores en tres niveles discretos: negativo, nulo y positivo. Para ello, se desarrolló un pipeline completo de modelado predictivo, que incluye limpieza de datos, imputación de valores inválidos, tratamiento de outliers, y comparación de modelos supervisados: regresión logística, análisis discriminante lineal (LDA) y Random Forest.
+
+El objetivo principal es identificar el modelo con mejor desempeño y capacidad de generalización para esta tarea multiclase, evaluando su precisión, robustez y viabilidad de implementación en contextos reales.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Métodos}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Exploración de Datos y Preprocesamiento}
+
+Con el objetivo de garantizar una evaluación robusta, se aplicó una partición estratificada sobre el conjunto \texttt{dev}, asignando el 80\% de los datos a entrenamiento y el 20\% restante a validación. Esta partición mantuvo la proporción original de clases de la variable objetivo \texttt{war\_class}, la cual clasifica el impacto de cada jugador en tres niveles: negativo, nulo y positivo.
+
+La variable \texttt{war\_class} fue construida a partir de la discretización de la métrica continua \texttt{war\_total}, que posteriormente fue excluida del conjunto de predictores para evitar fuga de información durante el entrenamiento. El análisis exploratorio y las tareas de preprocesamiento fueron realizadas exclusivamente sobre el conjunto de entrenamiento, asegurando la integridad del esquema de validación.
+
+La distribución de clases en el conjunto de entrenamiento mostró un leve desbalance: la clase correspondiente al rendimiento negativo (clase 0) representó el 37\% de las observaciones, mientras que las clases 1 (nulo) y 2 (positivo) concentraron el 33\% y 30\%, respectivamente. Esta ligera asimetría no justificó la necesidad de aplicar técnicas de re-balanceo.
+
+En cuanto a la calidad del conjunto, no se encontraron valores faltantes explícitos ni duplicados. No obstante, se identificaron valores negativos inverosímiles en variables como \texttt{poss} y \texttt{mp}, los cuales no tienen sentido semántico en el contexto (por ejemplo, no es posible registrar minutos jugados negativos). Estas observaciones fueron tratadas como ausentes y posteriormente imputadas utilizando el algoritmo de vecinos más cercanos (\textit{K-Nearest Neighbors}), según se detalla en el Apéndice~\ref{subsec:knn}.
+
+Para mitigar la influencia de valores extremos, se aplicó una técnica de winsorización basada en el rango intercuartílico (IQR), cuyo procedimiento completo puede consultarse en el Apéndice~\ref{subsec:iqr}. Esta técnica permitió reducir el impacto de los outliers sin eliminar observaciones, ajustando los valores extremos a límites definidos por los cuartiles del conjunto.
+
+
+Finalmente, el análisis de correlación de Pearson confirmó la relevancia de estas variables para la tarea de clasificación: \texttt{raptor\_total} mostró una correlación fuerte con la clase objetivo (\(\rho \approx 0.82\)), mientras que \texttt{poss} y \texttt{mp} presentaron correlaciones moderadas (\(\rho \approx 0.57\)). Estos resultados respaldan su inclusión como predictores en el modelado supervisado.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Resultados}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+A continuación se presentan los principales resultados obtenidos tras la implementación y evaluación de distintos modelos predictivos. La descripción completa del proceso de modelado —incluyendo la configuración, el esquema de entrenamiento y las estrategias de evaluación utilizadas para cada algoritmo— se encuentra detallada en el Apéndice~\ref{subsec:modelado-predictivo-p2} (Modelos utilizados) y en el Apéndice~\ref{subsec:metricas-desempenio} (Métricas de desempeño).
+
+
+
+\subsection{Evaluación Inicial sobre el Conjunto de Validación}
+
+Una vez definidos y entrenados los modelos sobre el conjunto de entrenamiento, se procedió a evaluar su desempeño utilizando un conjunto de validación estratificada. Esta fase buscó estimar la capacidad predictiva preliminar de cada enfoque, utilizando métricas estándar de clasificación multiclase: \textit{accuracy}, \textit{precision}, \textit{recall} y \textit{F1-score}. Los resultados obtenidos se presentan en la Tabla~\ref{tab:val_war_class}.
+
+
+Los resultados de esta primera etapa mostraron una clara superioridad del modelo Random Forest, que alcanzó valores cercanos al 98\% en todas las métricas. Este desempeño indica una notable capacidad para capturar relaciones complejas entre las variables predictoras y la clase objetivo. En segundo lugar, se ubicó el modelo LDA, con métricas superiores al 92\%, lo que demuestra su buena adecuación estructural al problema, particularmente bajo los supuestos gaussianos. En contraste, la regresión logística obtuvo resultados considerablemente más bajos, en especial en términos de precisión y F1-score, lo cual sugiere una dificultad para modelar relaciones no lineales dentro del espacio de características.
+
+\subsection{Evaluación Final sobre el Conjunto de Prueba}
+
+Una vez seleccionados los modelos más competitivos y calibrados sus hiperparámetros, se procedió al reentrenamiento utilizando la totalidad del conjunto de desarrollo (entrenamiento + validación), replicando exactamente el mismo esquema de preprocesamiento aplicado en las fases anteriores. Esta estrategia permitió consolidar el aprendizaje sobre un mayor volumen de datos sin comprometer la validez del conjunto de prueba independiente. Los resultados finales se detallan en la Tabla~\ref{tab:metrics_war_class}.
+
+Los resultados obtenidos refuerzan las conclusiones preliminares: Random Forest mantuvo su posición como el modelo de mejor rendimiento, con un F1-score de 0.9580 en el conjunto de prueba, muy cercano al valor alcanzado en validación, lo que evidencia su excelente capacidad de generalización y estabilidad. LDA también mostró un comportamiento coherente entre ambas fases, con métricas altas y consistentes. Por otro lado, la regresión logística multiclase exhibió una mejora destacada, con un incremento de aproximadamente un 78\% en su F1-score respecto a la validación (de 0,4965 a 0,8836). Este salto sugiere que el modelo fue capaz de beneficiarse significativamente del mayor volumen de datos en el reentrenamiento, y que posiblemente la configuración inicial subestimó su verdadero potencial predictivo.
+\subsection{Selección del Modelo Final }
+
+La elección del modelo a implementar en un entorno productivo no debe basarse únicamente en el desempeño cuantitativo, sino también en criterios de estabilidad, interpretabilidad, eficiencia computacional y adaptabilidad a nuevos datos. Considerando estos factores, el modelo Random Forest emerge como la opción más robusta y eficaz, no sólo por sus métricas superiores, sino también por su baja variabilidad entre validación y prueba. Su arquitectura basada en árboles permite capturar interacciones no lineales sin necesidad de transformaciones previas complejas, lo que facilita su integración en entornos reales.
+
+Además, visualizaciones complementarias —como las matrices de confusión y las curvas ROC y PR generadas para cada modelo— confirmaron la capacidad del Random Forest para minimizar errores de clasificación entre clases adyacentes, un aspecto crítico en tareas donde las decisiones están vinculadas a niveles de rendimiento ordinal. Para un mayor detalle, en la Figura \ref{fig:roc_pr_random_forest_test} se observa el gráfico conjunto de ROC, matriz de confusión y PR del modelo evaluado sobre el conjunto de prueba. 
+
+En conjunto, los resultados validan la elección de Random Forest como modelo final recomendado para la tarea de clasificación de impacto deportivo, resaltando su versatilidad, precisión y capacidad de generalización en contextos multiclase.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusiones}
+
+Este trabajo abordó la clasificación del impacto de jugadores de baloncesto profesional utilizando la métrica \texttt{WAR\_class}, construyendo un pipeline completo desde el preprocesamiento hasta la evaluación comparativa de modelos. El análisis inicial permitió detectar y corregir inconsistencias en los datos mediante imputación por KNN y winsorización por IQR, mejorando así la calidad de los insumos para el modelado. Sobre esta base, se entrenaron tres algoritmos supervisados: regresión logística, análisis discriminante lineal (LDA) y Random Forest, priorizando el F1-score ponderado como métrica de referencia y aplicando validación cruzada estratificada para la calibración de hiperparámetros.
+
+Los resultados demostraron una clara superioridad del modelo Random Forest, que logró una alta precisión y robustez tanto en validación como en prueba, adaptándose adecuadamente a la naturaleza multiclase y a la complejidad del problema. Si bien LDA mostró un rendimiento sólido y estable, y la regresión logística mejoró tras su reentrenamiento, Random Forest se destacó por su capacidad para modelar interacciones no lineales, su tolerancia a valores atípicos y su consistencia frente a nuevas observaciones. 
+
+
+\end{multicols}

@@ -15,7 +15,6 @@ mpl.rcParams['xtick.labelsize'] = 12
 mpl.rcParams['ytick.labelsize'] = 12
 mpl.rcParams['legend.fontsize'] = 12
 
-# Configuración de los ejes y grid
 mpl.rcParams['axes.grid'] = True
 mpl.rcParams['grid.alpha'] = 0.3
 mpl.rcParams['grid.linestyle'] = '--'
@@ -47,7 +46,6 @@ mpl.rcParams['legend.framealpha'] = 0.8
 mpl.rcParams['legend.edgecolor'] = 'black'
 mpl.rcParams['legend.fancybox'] = True
 
-# Configuración de los colores
 mpl.rcParams['axes.prop_cycle'] = cycler(color=[
     '#1f77b4',  
     '#ff7f0e',  
@@ -63,7 +61,7 @@ mpl.rcParams['axes.prop_cycle'] = cycler(color=[
 
 mpl.rcParams['figure.figsize'] = (10, 6)
 mpl.rcParams['figure.dpi'] = 100
-mpl.rcParams['figure.facecolor'] = '#f0f0f0'  # Fondo gris claro para la figura
+mpl.rcParams['figure.facecolor'] = '#f0f0f0'  
 mpl.rcParams['figure.edgecolor'] = 'white'
 mpl.rcParams['savefig.dpi'] = 300
 mpl.rcParams['savefig.bbox'] = 'tight'

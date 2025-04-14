@@ -1,6 +1,9 @@
 \documentclass[11pt]{article}
+\usepackage{multicol}
+
 \usepackage[utf8]{inputenc}
 \usepackage[spanish]{babel}
+\usepackage{subcaption}
 \usepackage{graphicx}         % Para incluir imágenes
 \usepackage{amsmath}          % Para notación matemática
 \usepackage[margin=3cm]{geometry}  % Márgenes
@@ -14,12 +17,12 @@
 
 \begin{titlepage}
     \centering
-    \vspace*{2cm}
-    % \includegraphics[scale=1.8]{Logo-Udesa.jpg}\par
-    \vspace{10pt}
+    \vspace*{0.2cm}
+    \includegraphics[scale=0.6]{figures/Logo-Udesa.png}\par
+    \vspace{50pt}
 
     {\LARGE \textbf{I302 - Aprendizaje Automático\\ y Aprendizaje Profundo}\par}
-    \vspace{1cm}
+    \vspace{2cm}
 
     {\LARGE \textbf{Trabajo Práctico 2: \\Clasificación y Ensemble Learning}\par}
     \vspace{4cm}
@@ -33,10 +36,16 @@
     \Large{Ingeniería en Inteligencia Artificial}
 \end{titlepage}
 
+\section*{Diagnóstico de Cáncer de Mama}
 
 \input{p1.tex}
 % EJERCICIO 2
-% \input{p2.tex}
+\newpage
+\section*{Clasificación de Jugadores de Baloncesto}
+\input{p2.tex}
+
+
+\include{apendice}
 
 % Bibliografía
 % \bibliographystyle{plain}`'
