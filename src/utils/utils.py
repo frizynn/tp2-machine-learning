@@ -7,14 +7,11 @@ from preprocessing.data_loader import DataLoader
 from models.logistic_regression import LogisticRegression
 from evaluation.metrics import (
     confusion_matrix, accuracy_score, precision_score, 
-    recall_score, f1_score, roc_curve, precision_recall_curve, auc,
+    recall_score, f1_score,
     compute_binary_curves, compute_multiclass_curves
 )
 from utils.visuals import (
-    plot_confusion_matrix, plot_roc_curve, plot_precision_recall_curve,
-    plot_comparative_curves, plot_model_evaluation, save_or_show_plot,
-    plot_outliers_analysis, plot_numerical_distributions, plot_correlation_heatmap,
-    plot_outlier_boxplot
+    plot_comparative_curves, plot_model_evaluation
 )
 
 
@@ -22,116 +19,123 @@ from preprocessing.imputation import KNNImputer
 
 def train_valid_split(df, test_size=0.2, random_state=42, stratify=None):
     """
-    Divide un DataFrame en conjuntos de entrenamiento y validación.
+    Split a DataFrame into training and validation sets.
     
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame a dividir
+        DataFrame to split
     test_size : float, default=0.2
-        Proporción del conjunto de datos a incluir en la división de validación
+        Proportion of the dataset to include in the validation split
     random_state : int, default=42
-        Semilla para la reproducibilidad
+        Seed for reproducibility
     stratify : array-like, optional
-        Array de etiquetas para realizar una división estratificada. Si se proporciona,
-        la distribución de clases en los conjuntos de entrenamiento y validación
-        será similar a la del conjunto original.
+        Array of labels for stratified split. If provided,
+        the class distribution in the training and validation sets
+        will be similar to that of the original set.
         
     Returns
     -------
     tuple
-        (df_train, df_valid) - DataFrames de entrenamiento y validación
+        (df_train, df_valid) - Training and validation DataFrames
     """
     np.random.seed(random_state)
     
     if stratify is not None:
-        # Obtener índices únicos para cada clase
         unique_classes = np.unique(stratify)
         train_indices = []
         valid_indices = []
         
         for cls in unique_classes:
-            # Obtener índices para la clase actual
             cls_indices = np.where(stratify == cls)[0]
             np.random.shuffle(cls_indices)
             
-            # Calcular tamaño de validación para esta clase
             cls_test_size = int(len(cls_indices) * test_size)
             
-            # Dividir índices
             valid_indices.extend(cls_indices[:cls_test_size])
             train_indices.extend(cls_indices[cls_test_size:])
             
-        # Convertir a arrays numpy y mezclar
         train_indices = np.array(train_indices)
         valid_indices = np.array(valid_indices)
         np.random.shuffle(train_indices)
         np.random.shuffle(valid_indices)
         
     else:
-        # División aleatoria simple
         shuffled_indices = np.random.permutation(len(df))
         test_set_size = int(len(df) * test_size)
         valid_indices = shuffled_indices[:test_set_size]
         train_indices = shuffled_indices[test_set_size:]
     
     return df.iloc[train_indices], df.iloc[valid_indices]
-##################################################
-# Helper Functions: Cálculo de curvas y AUC
-##################################################
 
 
 
-
-
-##################################################
-# Funciones de evaluación y representación
-##################################################
-
-def print_numerical_features_range(df, include_dtypes=['number'], decimal_places=4):
+def print_numerical_features_range(df: pd.DataFrame, include_dtypes: List[str] = ['number'], decimal_places: int = 4) -> pd.DataFrame:
     """
-    Muestra el rango (mínimo y máximo) de cada característica numérica en una tabla HTML.
+    Display the range (minimum and maximum) of each numerical feature in an HTML table.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing the numerical features to analyze
+    include_dtypes : List[str], default=['number']
+        List of data types to include in the analysis. Default includes all numeric types
+    decimal_places : int, default=4
+        Number of decimal places to round the values to
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the feature names and their corresponding minimum and maximum values
+        
+    Examples
+    --------
+    >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    >>> ranges_df = print_numerical_features_range(df)
+    >>> print(ranges_df)
+       Feature  Minimum  Maximum
+    0       A        1        3
+    1       B        4        6
     """
     desc = df.select_dtypes(include=include_dtypes).describe().loc[["min", "max"]]
     ranges_df = pd.DataFrame({
         "Feature": desc.columns,
-        "Mínimo": np.around(desc.loc["min"].values, decimal_places),
-        "Máximo": np.around(desc.loc["max"].values, decimal_places)
+        "Minimum": np.around(desc.loc["min"].values, decimal_places),
+        "Maximum": np.around(desc.loc["max"].values, decimal_places)
     })
     display(HTML(ranges_df.to_html(index=False)))
     return ranges_df
 
 def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average="weighted", print_metrics=True):
     """
-    Calcula las métricas de evaluación para un modelo de clasificación.
+    Calculate evaluation metrics for a classification model.
     
     Parameters
     ----------
     model : object
-        Modelo entrenado con un método predict() implementado
+        Trained model with a predict() method implemented
     X_test : array-like
-        Features del conjunto de prueba
+        Features of the test set
     y_test : array-like
-        Etiquetas verdaderas del conjunto de prueba
+        True labels of the test set
     threshold : float, default=0.5
-        Umbral para la clasificación binaria
+        Threshold for binary classification
     pos_label : int, default=1
-        Etiqueta de la clase positiva para métricas binarias
+        Label of the positive class for binary metrics
     average : str, default="weighted"
-        Método de promedio para métricas multiclase
+        Averaging method for multiclass metrics
     print_metrics : bool, default=True
-        Si es True, imprime las métricas principales
+        If True, prints the main metrics
     
     Returns
     -------
     dict
-        Diccionario con todas las métricas calculadas
+        Dictionary with all calculated metrics
     """
     classes = np.unique(y_test)
     n_classes = len(classes)
     is_binary = (n_classes == 2)
     
-    # 1. PREDICCIONES
     y_pred = model.predict(X_test, threshold=threshold) if isinstance(model, LogisticRegression) else model.predict(X_test)
     try:
         y_pred_prob = model.predict_prob(X_test)
@@ -139,7 +143,6 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
     except (AttributeError, NotImplementedError):
         has_proba = False
     
-    # 2. CALCULAR MÉTRICAS
     accuracy = accuracy_score(y_test, y_pred)
     if is_binary:
         precision = precision_score(y_test, y_pred, pos_label=pos_label)
@@ -150,7 +153,6 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
         recall = recall_score(y_test, y_pred, average=average, labels=classes)
         f1 = f1_score(y_test, y_pred, average=average, labels=classes)
     
-    # Calcular matriz de confusión
     conf_matrix = confusion_matrix(y_test, y_pred, labels=classes)
     
     if print_metrics:
@@ -159,7 +161,6 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
         print(f"Recall: {recall:.4f}")
         print(f"F1 Score: {f1:.4f}")
     
-    # 3. CREAR DICCIONARIO DE MÉTRICAS
     metrics = {
         'accuracy': accuracy,
         'precision': precision,
@@ -170,13 +171,12 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
         'has_proba': has_proba
     }
     
-    # Agregar datos de curvas si hay probabilidades
     if has_proba:
         metrics['y_pred_prob'] = y_pred_prob
         
         if is_binary:
+            # handle binary classification curves
             fpr, tpr, roc_auc_val, precision_vals, recall_vals, pr_auc_val = compute_binary_curves(y_test, y_pred_prob[:, 1], pos_label)
-            # Almacenar los datos completos de las curvas ROC y PR
             metrics['roc'] = {
                 'auc': roc_auc_val,
                 'fpr': fpr,
@@ -188,7 +188,7 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
                 'recall': recall_vals
             }
         else:
-            # Para multiclase, se guardan los datos de las curvas para cada clase
+            # handle multi-class curves with one-vs-rest approach
             fpr_dict, tpr_dict, roc_auc_scores, prec_dict, rec_dict, pr_auc_scores = compute_multiclass_curves(y_test, y_pred_prob, classes)
             avg_roc_auc = np.mean(roc_auc_scores)
             avg_pr_auc = np.mean(pr_auc_scores)
@@ -208,7 +208,6 @@ def get_model_metrics(model, X_test, y_test, threshold=0.5, pos_label=1, average
     else:
         metrics['roc'] = metrics['pr'] = None
     
-    # Agregar datos adicionales que serán útiles para la visualización
     metrics['classes'] = classes
     metrics['is_binary'] = is_binary
     metrics['y_test'] = y_test
@@ -221,44 +220,43 @@ def evaluate_model(model, X_test, y_test, class_names=None, threshold=0.5, pos_l
                    figsize=(16, 5), save_dir=None, base_filename=None, 
                    print_metrics=True, show_plots=True, subplots=True, average="weighted"):
     """
-    Evalúa un modelo de clasificación calculando métricas y generando gráficos.
-    Esta función es un wrapper que combina get_model_metrics y plot_model_evaluation.
+    Evaluate a classification model by calculating metrics and generating plots.
+    This function is a wrapper that combines get_model_metrics and plot_model_evaluation.
     
     Parameters
     ----------
     model : object
-        Modelo con métodos predict() y opcionalmente predict_prob()
+        Model with predict() and optionally predict_prob() methods
     X_test : array-like
-        Features del conjunto de prueba
+        Features of the test set
     y_test : array-like
-        Etiquetas verdaderas
+        True labels
     class_names : list, optional
-        Nombres de las clases para los gráficos
+        Class names for plots
     threshold : float, default=0.5
-        Umbral de decisión para clasificación binaria
+        Decision threshold for binary classification
     pos_label : int, default=1
-        Etiqueta de la clase positiva
+        Label of the positive class
     figsize : tuple, default=(16, 5)
-        Tamaño de las figuras
+        Size of the figures
     save_dir : str, optional
-        Directorio para guardar gráficos
+        Directory to save plots
     base_filename : str, optional
-        Nombre base para archivos guardados
+        Base name for saved files
     print_metrics : bool, default=True
-        Si es True, imprime las métricas principales
+        If True, prints the main metrics
     show_plots : bool, default=True
-        Si es True, muestra los gráficos
+        If True, shows the plots
     subplots : bool, default=True
-        Si es True, combina gráficos en subplots
+        If True, combines plots in subplots
     average : str, default="weighted"
-        Método de promedio para métricas multiclase
+        Averaging method for multiclass metrics
 
     Returns
     -------
     dict
-        Diccionario con todas las métricas calculadas
+        Dictionary with all calculated metrics
     """
-    # Obtener métricas
     metrics = get_model_metrics(
         model=model,
         X_test=X_test,
@@ -269,7 +267,6 @@ def evaluate_model(model, X_test, y_test, class_names=None, threshold=0.5, pos_l
         print_metrics=print_metrics
     )
     
-    # Generar visualizaciones si se solicita
     if show_plots or save_dir:
         plot_model_evaluation(
             metrics=metrics,
@@ -281,7 +278,6 @@ def evaluate_model(model, X_test, y_test, class_names=None, threshold=0.5, pos_l
             subplots=subplots
         )
     
-    # Eliminar datos que solo se usaron para visualización
     if 'y_test' in metrics:
         del metrics['y_test']
     if 'y_pred' in metrics:
@@ -295,47 +291,45 @@ def evaluate_model(model, X_test, y_test, class_names=None, threshold=0.5, pos_l
 def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", show_plot=False, individual_plots=False, subplots=True,
                       title_fontsize=20, label_fontsize=16, tick_fontsize=14, legend_fontsize=14):
     """
-    Evalúa múltiples modelos sobre el mismo conjunto de datos,
-    generando una tabla comparativa de métricas y (opcionalmente) gráficos comparativos.
-    Utiliza get_model_metrics y plot_model_evaluation para una mejor organización del código.
+    Evaluate multiple models on the same dataset,
+    generating a comparative metrics table and (optionally) comparative plots.
+    Uses get_model_metrics and plot_model_evaluation for better code organization.
     
     Parameters
     ----------
     all_models : dict
-        Diccionario de modelos a evaluar
+        Dictionary of models to evaluate
     X : array-like
-        Features del conjunto a evaluar
+        Features of the set to evaluate
     y : array-like
-        Etiquetas verdaderas
+        True labels
     class_names : list
-        Nombres de las clases para los gráficos
+        Class names for plots
     output_dir : str
-        Directorio para guardar los resultados
+        Directory to save results
     prefix : str, default=""
-        Prefijo para los archivos generados
+        Prefix for generated files
     show_plot : bool, default=False
-        Si es True, muestra los gráficos
+        If True, shows the plots
     individual_plots : bool, default=False
-        Si es True, genera gráficos individuales para cada modelo
+        If True, generates individual plots for each model
     subplots : bool, default=True
-        Si es True, combina gráficos en subplots
+        If True, combines plots in subplots
     title_fontsize : int, default=20
-        Tamaño de fuente para títulos
+        Font size for titles
     label_fontsize : int, default=16
-        Tamaño de fuente para etiquetas de ejes
+        Font size for axis labels
     tick_fontsize : int, default=14
-        Tamaño de fuente para ticks
+        Font size for ticks
     legend_fontsize : int, default=14
-        Tamaño de fuente para leyendas
+        Font size for legends
     """
-    # Evaluar todos los modelos
-    print(f"Evaluando modelos en el conjunto de {prefix if prefix else 'validación'}")
+    print(f"Evaluating models on the {prefix if prefix else 'validation'} set")
     evaluation_metrics = {}
     
     for model_name, model_data in all_models.items():
-        print(f"Evaluando {model_name}")
+        print(f"Evaluating {model_name}")
         
-        # Calcular métricas
         metrics = get_model_metrics(
             model=model_data["model"],
             X_test=X,
@@ -344,22 +338,19 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
             print_metrics=False
         )
         
-        # Generar visualizaciones individuales si se solicita
         if individual_plots:
             plot_model_evaluation(
                 metrics=metrics,
                 class_names=class_names,
-                figsize=(12, 8),  # Aumentado de (10, 6) a (12, 8)
+                figsize=(12, 8),
                 save_dir=output_dir,
                 base_filename=f"{model_name.replace(' ', '_').lower()}_{prefix}",
                 show_plots=show_plot,
                 subplots=subplots
             )
         
-        # Almacenar métricas para la comparación
         evaluation_metrics[model_name] = metrics
     
-    # Crear tabla comparativa
     metrics_df = pd.DataFrame({
         "Model": list(evaluation_metrics.keys()),
         "Accuracy": [evaluation_metrics[m].get("accuracy", np.nan) for m in evaluation_metrics],
@@ -370,16 +361,14 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
         "AUC-PR": [evaluation_metrics[m].get("pr", {}).get("average_precision", np.nan) if evaluation_metrics[m].get("pr") is not None else np.nan for m in evaluation_metrics]
     })
     
-    # Formatear los valores numéricos
     for col in metrics_df.columns:
         if col != "Model":
             metrics_df[col] = metrics_df[col].map(lambda x: f"{x:.4f}" if isinstance(x, (float, int, np.number)) else x)
     
-    # Guardar métricas en CSV
     metrics_file_path = os.path.join(output_dir, f"{prefix}_metrics_comparison.csv")
     metrics_df.to_csv(metrics_file_path, index=False)
     
-    # Configurar tamaños de fuente
+    # preserve original font settings before modifying
     _set_font_sizes = plt.rcParams.copy()
     plt.rcParams.update({
         'axes.titlesize': title_fontsize,
@@ -389,26 +378,58 @@ def evaluate_all_models(all_models, X, y, class_names, output_dir, prefix="", sh
         'legend.fontsize': legend_fontsize
     })
     
-    # Generar gráficos comparativos si se solicita
     if show_plot:
         models_for_plotting = {name: {"model": all_models[name]["model"], "metrics": evaluation_metrics[name]} for name in all_models}
         plot_comparative_curves(
             models_for_plotting, 
-            output_dir, 
+            title_fontsize=title_fontsize,
+            label_fontsize=label_fontsize,
+            tick_fontsize=tick_fontsize,
+            legend_fontsize=legend_fontsize,
+            output_dir=output_dir, 
             prefix=f"{prefix}_", 
             show_plot=show_plot, 
             subplots=subplots,
-            figsize=(20, 10)  # Aumentado de tamaño predeterminado a (20, 10)
+            figsize=(20, 10)
         )
     
-    # Restaurar la configuración original de fuentes
     plt.rcParams.update(_set_font_sizes)
     
     return metrics_df, evaluation_metrics
 
 def analyze_null_values(dataframes, dataset_names=None):
     """
-    Analiza y muestra información detallada sobre valores nulos en uno o más DataFrames.
+    Analyzes and displays detailed information about null values in one or more DataFrames.
+    
+    This function provides a comprehensive analysis of missing values in the input DataFrame(s),
+    including per-column statistics and overall dataset statistics. It displays the results
+    in a formatted table and returns detailed metrics for further analysis.
+    
+    Parameters
+    ----------
+    dataframes : pd.DataFrame or list of pd.DataFrame
+        One or more DataFrames to analyze for null values.
+    dataset_names : list of str, optional
+        Names to use for each dataset in the output. If not provided, defaults to
+        "Dataset 1", "Dataset 2", etc.
+        
+    Returns
+    -------
+    dict
+        Dictionary containing detailed null value analysis for each dataset with keys:
+        - 'null_table': DataFrame with per-column null statistics
+        - 'summary': DataFrame with overall dataset null statistics
+        - 'total_nulls': Total number of null values in the dataset
+        - 'total_rows': Total number of rows in the dataset
+        - 'null_percentage': Overall percentage of null values in the dataset
+        
+    Examples
+    --------
+    >>> df1 = pd.DataFrame({'A': [1, None, 3], 'B': [4, 5, None]})
+    >>> df2 = pd.DataFrame({'C': [None, 2, 3], 'D': [4, None, 6]})
+    >>> results = analyze_null_values([df1, df2], ['Train', 'Test'])
+    >>> print(results['Train']['null_percentage'])
+    16.67
     """
     from IPython.display import display
     if not isinstance(dataframes, list):
@@ -417,23 +438,23 @@ def analyze_null_values(dataframes, dataset_names=None):
         dataset_names = [f"Dataset {i+1}" for i in range(len(dataframes))]
     results = {}
     for df, name in zip(dataframes, dataset_names):
-        print(f"Valores nulos en {name}:")
+        print(f"Null values in {name}:")
         null_counts = df.isnull().sum()
         total_rows = len(df)
         null_percentage = (null_counts / total_rows) * 100
         null_table = pd.DataFrame({
-            'Columna': null_counts.index,
-            'Cantidad de nulos': null_counts.values,
-            'Porcentaje (%)': null_percentage.values.round(2)
+            'Column': null_counts.index,
+            'Number of nulls': null_counts.values,
+            'Percentage (%)': null_percentage.values.round(2)
         })
         display(null_table)
         samples_with_nulls = df.isnull().any(axis=1).sum()
         samples_without_nulls = total_rows - samples_with_nulls
         samples_percentage = (samples_with_nulls / total_rows) * 100
         summary = pd.DataFrame({
-            'Métrica': ['Muestras con al menos un valor nulo', 'Muestras sin valores nulos', 'Total de muestras'],
-            'Cantidad': [samples_with_nulls, samples_without_nulls, total_rows],
-            'Porcentaje (%)': [samples_percentage.round(2), (100 - samples_percentage).round(2), 100.0]
+            'Metric': ['Samples with at least one null value', 'Samples without null values', 'Total samples'],
+            'Count': [samples_with_nulls, samples_without_nulls, total_rows],
+            'Percentage (%)': [samples_percentage.round(2), (100 - samples_percentage).round(2), 100.0]
         })
         display(summary)
         results[name] = {
@@ -445,23 +466,23 @@ def analyze_null_values(dataframes, dataset_names=None):
         }
         print("\n")
     return results
-
 def remove_negative_values(df, numerical_cols):
     """
-    Reemplaza todos los valores negativos en las columnas numéricas del DataFrame por NaN.
+    Replaces all negative values in the numerical columns of the DataFrame with NaN.
     
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame a procesar.
+        DataFrame to process.
+    numerical_cols : list
+        List of numerical columns to check for negative values.
     
     Returns
     -------
     pd.DataFrame, int
-        DataFrame procesado y el número total de valores negativos reemplazados.
+        Processed DataFrame and the total number of negative values replaced.
     """
     df_copy = df.copy()
-    # Seleccionar solo las columnas numéricas
     total_negatives = 0
     for col in numerical_cols:
         mask = (df_copy[col] < 0) & df_copy[col].notna()
@@ -472,27 +493,26 @@ def remove_negative_values(df, numerical_cols):
 
 def impute_missing_values(train_df, valid_df=None, test_df=None, knn_neighbors=8, knn_weights="distance"):
     """
-    Imputa valores faltantes utilizando un KNNImputer personalizado en uno o varios DataFrames.
+    Imputes missing values using a custom KNNImputer on one or more DataFrames.
     
     Parameters
     ----------
     train_df : pd.DataFrame
-        DataFrame de entrenamiento.
+        Training DataFrame.
     valid_df : pd.DataFrame, optional
-        DataFrame de validación.
+        Validation DataFrame.
     test_df : pd.DataFrame, optional
-        DataFrame de test.
+        Test DataFrame.
     knn_neighbors : int, default=8
-        Número de vecinos a usar.
+        Number of neighbors to use.
     knn_weights : str, default="distance"
-        'uniform' o 'distance'.
+        'uniform' or 'distance'.
     
     Returns
     -------
     Tuple[pd.DataFrame,...]
-        Los DataFrames imputados; si solo se pasa train_df, se retorna ese DataFrame.
+        The imputed DataFrames; if only train_df is passed, returns that DataFrame.
     """
-    # Resetear índices para evitar problemas
     train_df = train_df.reset_index(drop=True)
     if valid_df is not None:
         valid_df = valid_df.reset_index(drop=True)
@@ -529,37 +549,98 @@ def impute_missing_values(train_df, valid_df=None, test_df=None, knn_neighbors=8
 
 def apply_feature_engineering(df, transformations, inplace=False, verbose=False):
     """
-    Aplica transformaciones de feature engineering a un DataFrame.
+    Applies feature engineering transformations to a DataFrame.
+    
+    This function allows for the creation of new features by applying transformation functions
+    to existing columns in the DataFrame. It supports both in-place modifications and
+    creation of a new DataFrame.
+    
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame to transform
+    transformations : dict
+        Dictionary mapping new feature names to transformation functions.
+        Each function should take the DataFrame as input and return a Series or array
+        of the same length as the DataFrame.
+    inplace : bool, default=False
+        If True, modifies the original DataFrame. If False, returns a new DataFrame.
+    verbose : bool, default=False
+        If True, prints information about each transformation as it's applied.
+        
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with new features added. If inplace=True, returns the modified original
+        DataFrame. If inplace=False, returns a new DataFrame with the transformations applied.
+        
+    Examples
+    --------
+    >>> df = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})
+    >>> transformations = {
+    ...     'C': lambda x: x['A'] + x['B'],
+    ...     'D': lambda x: x['A'] * x['B']
+    ... }
+    >>> new_df = apply_feature_engineering(df, transformations)
+    >>> print(new_df)
+       A  B  C   D
+    0  1  4  5   4
+    1  2  5  7  10
+    2  3  6  9  18
     """
     if not inplace:
         df = df.copy()
     for new_feature, transform_func in transformations.items():
         if verbose:
-            print(f"Aplicando transformación para la feature: '{new_feature}'")
+            print(f"Applying transformation for feature: '{new_feature}'")
         df[new_feature] = transform_func(df)
     return df
 
 def save_processed_data(loader, data_dict, data_dir, dataset_name, processing_type="preprocessed"):
     """
-    Guarda los datos procesados o preprocesados en archivos CSV.
+    Saves processed or preprocessed data to CSV files in a structured directory hierarchy.
     
-    Args:
-        loader: Instancia del DataLoader
-        data_dict: Diccionario con los DataFrames a guardar
-        data_dir: Directorio base de datos
-        dataset_name: Nombre del conjunto de datos
-        processing_type: Tipo de procesamiento ("preprocessed" o "processed")
+    This function handles the saving of different dataset splits (train, validation, test, and optionally dev)
+    to CSV files in a specified directory structure. It creates the necessary directories if they don't exist
+    and uses the DataLoader instance to perform the actual saving operation.
+    
+    Parameters
+    ----------
+    loader : DataLoader
+        Instance of DataLoader class that handles the actual data saving operations
+    data_dict : dict
+        Dictionary containing the DataFrames to save. Keys should be 'train', 'valid', 'test',
+        and optionally 'dev'
+    data_dir : pathlib.Path or str
+        Base directory where the processed data will be saved
+    dataset_name : str
+        Name of the dataset, used to construct the output filenames
+    processing_type : str, default="preprocessed"
+        Type of processing applied to the data. Used to create a subdirectory.
+        Common values are "preprocessed" or "processed"
+        
+    Returns
+    -------
+    None
+    
+    Examples
+    --------
+    >>> from pathlib import Path
+    >>> from data_loader import DataLoader
+    >>> loader = DataLoader()
+    >>> data = {
+    ...     'train': train_df,
+    ...     'valid': valid_df,
+    ...     'test': test_df
+    ... }
+    >>> save_processed_data(loader, data, Path('data'), 'my_dataset')
     """
-    # Actualizar el loader con los nuevos datos
     loader.update(**data_dict)
     
-    # Construir las rutas de los archivos
     base_path = data_dir / processing_type
     
-    # Crear directorio si no existe
     base_path.mkdir(parents=True, exist_ok=True)
     
-    # Construir rutas completas
     file_paths = {
         'train': base_path / f"{dataset_name}_train.csv",
         'valid': base_path / f"{dataset_name}_valid.csv",
@@ -567,14 +648,12 @@ def save_processed_data(loader, data_dict, data_dir, dataset_name, processing_ty
         'dev': base_path / f"{dataset_name}_dev.csv" if 'dev' in data_dict else None
     }
     
-    # Guardar los datos
     loader.save_processed_data(
         df_train_dir=file_paths['train'],
         df_valid_dir=file_paths['valid'],
         df_test_dir=file_paths['test'],
         df_dev_dir=file_paths['dev'] if 'dev' in file_paths else None
     )
-
 def calculate_class_weights(y):
     """
     Calculate class weights for cost-sensitive learning according to the formula C = π2/π1
@@ -594,26 +673,39 @@ def calculate_class_weights(y):
     classes, counts = np.unique(y, return_counts=True)
     total = len(y)
 
-    # Calculate class probabilities
     probs = counts / total
 
-    # Find majority class and its probability
+    # complex part: finding majority class and setting weights for minority classes
     majority_idx = np.argmax(counts)
     majority_class = classes[majority_idx]
     majority_prob = probs[majority_idx]
 
-    # Initialize weights with 1.0 for all classes
     weights = {cls: 1.0 for cls in classes}
 
-    # Apply weight C = π2/π1 only to minority classes
     for i, cls in enumerate(classes):
-        if cls != majority_class:  # If it's a minority class
+        if cls != majority_class:
             weights[cls] = majority_prob / probs[i]
             
-    
     return weights
 
-def normalize_data(X,params,return_params=False):
+def normalize_data(X, params, return_params=False):
+    """
+    Normalizes data using provided parameters or calculates them if not provided.
+    
+    Parameters
+    ----------
+    X : array-like
+        Data to normalize
+    params : dict or None
+        Dictionary with 'mean' and 'std' parameters. If None, they are calculated.
+    return_params : bool, default=False
+        Whether to return normalization parameters
+        
+    Returns
+    -------
+    array-like or tuple
+        Normalized data or tuple (normalized_data, params)
+    """
     if params is None:
         params = {}
         params["mean"] = X.mean()
@@ -626,19 +718,39 @@ def normalize_data(X,params,return_params=False):
 
 def format_metrics_table(metrics_df, title="Metrics Summary"):
     """
-    Formatea una tabla de métricas para mostrar, extrayendo valores AUC de diccionarios cuando sea necesario.
+    Formats a metrics table for display, extracting AUC values from dictionaries when necessary.
     
-    Args:
-        metrics_df (pd.DataFrame): DataFrame con las métricas a formatear
-        title (str): Título a mostrar antes de la tabla
+    This function takes a DataFrame containing model evaluation metrics and formats it for display,
+    handling nested dictionary values for AUC-ROC and AUC-PR metrics. It creates a copy of the
+    input DataFrame to avoid modifying the original data.
+    
+    Parameters
+    ----------
+    metrics_df : pd.DataFrame
+        DataFrame containing model evaluation metrics. Expected to have columns for various
+        metrics including potentially 'AUC-ROC' and 'AUC-PR' which may contain nested dictionaries.
+    title : str, default="Metrics Summary"
+        Title to display before the metrics table.
         
-    Returns:
-        pd.DataFrame: DataFrame formateado para visualización
+    Returns
+    -------
+    pd.DataFrame
+        Formatted DataFrame with extracted values from nested dictionaries, ready for display.
+        
+    Examples
+    --------
+    >>> metrics_df = pd.DataFrame({
+    ...     'Model': ['Model1'],
+    ...     'AUC-ROC': [{'auc': 0.85}],
+    ...     'AUC-PR': [{'average_precision': 0.78}]
+    ... })
+    >>> formatted_df = format_metrics_table(metrics_df)
+    >>> print(formatted_df['AUC-ROC'].iloc[0])
+    0.8500
     """
-    # Crear una copia para no modificar el original
     display_df = metrics_df.copy()
     
-    # Formatear columnas AUC si contienen diccionarios
+    # complex part: extract values from nested dictionaries for display
     for col in ['AUC-ROC', 'AUC-PR']:
         if col in display_df.columns:
             display_df[col] = display_df[col].apply(
@@ -651,9 +763,26 @@ def format_metrics_table(metrics_df, title="Metrics Summary"):
     display(display_df)
     return display_df
 
-
 def process_training_data(train_df, valid_df, target_column="Diagnosis", encode_categorical=True):
-    # Resetear índices
+    """
+    Processes training data by separating features and target, and optionally encoding categorical variables.
+    
+    Parameters
+    ----------
+    train_df : pd.DataFrame
+        Training DataFrame
+    valid_df : pd.DataFrame
+        Validation DataFrame
+    target_column : str, default="Diagnosis"
+        Name of the target column
+    encode_categorical : bool, default=True
+        Whether to encode categorical variables
+        
+    Returns
+    -------
+    tuple
+        (X_train_encoded, y_train, X_val_encoded, y_val)
+    """
     train_df = train_df.reset_index(drop=True)
     valid_df = valid_df.reset_index(drop=True)
     
@@ -664,7 +793,6 @@ def process_training_data(train_df, valid_df, target_column="Diagnosis", encode_
     X_val = valid_df.drop(columns=[target_column])
     y_val = valid_df[target_column].to_numpy()
     
-    # Codificar variables categóricas
     if encode_categorical:
         X_train_encoded = DataLoader.encode_categorical(X_train).to_numpy()
         X_val_encoded = DataLoader.encode_categorical(X_val).to_numpy()

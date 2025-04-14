@@ -1,7 +1,7 @@
 """
-Módulo de configuración para visualizaciones.
+Visualization configuration module.
 
-Este módulo importa y expone la configuración de matplotlib definida en plot_config.py.
+This module imports and exposes the matplotlib configuration defined in plot_config.py.
 """
 
 from .plot_config import *

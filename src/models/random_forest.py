@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union, Any
+from dataclasses import dataclass
+from typing import  List, Optional, Tuple, Union
 import numpy as np
 from .base import BaseModel, ModelConfig
 
@@ -635,50 +635,4 @@ class RandomForest(BaseModel):
         
         # map indices back to original classes
         return self.classes_[y_pred_idx]
-    
-    def feature_importances(self) -> np.ndarray:
-        """
-        Calculate feature importances based on mean decrease in impurity.
-        
-        Returns
-        -------
-        np.ndarray
-            Feature importances of shape (n_features,)
-        """
-        self._check_is_fitted()
-        
-        # simplified approach that would need more complete implementation in a production-level random forest
-        
-        # initialize feature importance array
-        feature_importances = np.zeros(self.n_features_)
-        
-        # count features used in split nodes
-        for tree in self.trees_:
-            self._count_feature_usage(tree.tree_, feature_importances)
-        
-        # normalize to sum to 1
-        if np.sum(feature_importances) > 0:
-            feature_importances /= np.sum(feature_importances)
-        
-        return feature_importances
-    
-    def _count_feature_usage(self, node: DecisionTreeNode, importances: np.ndarray):
-        """
-        Helper method to count feature usage in a tree.
-        
-        Parameters
-        ----------
-        node : DecisionTreeNode
-            Current node in the tree
-        importances : np.ndarray
-            Array to update with feature usage counts
-        """
-        if node is None or node.is_leaf:
-            return
-        
-        # increment count for this feature
-        importances[node.feature_idx] += 1
-        
-        # recurse on children
-        self._count_feature_usage(node.left, importances)
-        self._count_feature_usage(node.right, importances) 
+   
